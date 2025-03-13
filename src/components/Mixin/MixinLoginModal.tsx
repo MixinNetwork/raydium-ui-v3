@@ -10,10 +10,11 @@ import { MixinModal } from './MixinModal';
 
 export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }) {
   const { t } = useTranslation()
-  const {user, getMixinClient, setKeystore} = useAppStore((s) => ({
+  const {user, getMixinClient, setKeystore, getMe} = useAppStore((s) => ({
     user: s.user,
     getMixinClient: s.getMixinClient,
     setKeystore: s.setKeystore,
+    getMe: s.getMe,
   }));
 
   const clientId = process.env.NEXT_PUBLIC_CLIENT_ID as string;
@@ -139,7 +140,7 @@ export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }
         authorization_id,
         session_private_key: seed.toString('hex'),
       });
-      const user = await client.user.profile();
+      await getMe();
       useAppStore.setState({ user })
       props.onClose();
     } catch (e: any) {
