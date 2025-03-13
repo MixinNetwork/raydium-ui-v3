@@ -141,7 +141,6 @@ export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }
         session_private_key: seed.toString('hex'),
       });
       await getMe();
-      useAppStore.setState({ user })
       props.onClose();
     } catch (e: any) {
       console.error(e);
