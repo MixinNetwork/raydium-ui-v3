@@ -61,4 +61,4 @@ export default function QrCode(props: QrCodeProps) {
       <Box className="qrcode-container" width={"100%"} height={"100%"} ref={qrCodeContainer}></Box>
     </Box>
   )
-};
+}

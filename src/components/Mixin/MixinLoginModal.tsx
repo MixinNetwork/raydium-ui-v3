@@ -51,10 +51,8 @@ export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }
       try {
         if (ws.current) ws.current.send(pako.gzip(JSON.stringify(msg)));
       } catch (e) {
-        if (e instanceof DOMException) {
-        } else {
+        if (!(e instanceof DOMException)) 
           console.error(e);
-        }
       }
     };
     const sendRefreshCode = (authorization: any) => {
@@ -79,7 +77,7 @@ export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }
         return false;
       }
       if (a.authorization_code.length > 16) {
-        useLogin(a.authorization_code);
+        handleLogin(a.authorization_code);
         return true;
       }
       return false;
@@ -114,7 +112,7 @@ export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }
     _setAuthorization(null);
   }, [user]);
 
-  const useLogin = async (code: string) => {
+  const handleLogin = async (code: string) => {
     const { seed, publicKey } = getED25519KeyPair();
 
     try {

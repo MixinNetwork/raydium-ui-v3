@@ -50,7 +50,7 @@ export default forwardRef(function ConnectedButton({ children, onClick, isDisabl
         status: 'info'
       })
       return;
-    };
+    }
     const url = handleComputerRegisterSchema(info, mix);
     setSchema(url);
     handleShow()

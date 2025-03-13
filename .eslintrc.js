@@ -22,6 +22,10 @@ module.exports = {
     'react/prop-types': 'off',
     'typescript-eslint/ban-types': 0,
     'no-async-promise-executor': 'warn',
-    'prefer-const': 'warn'
+    'prefer-const': 'warn',
+    'no-constant-condition': 'off',
+    '@typescript-eslint/ban-ts-comment': 'off',
+    'no-empty': 'off',
+    '@typescript-eslint/prefer-as-const': 'off',
   }
 }

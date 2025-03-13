@@ -232,7 +232,9 @@ export default function CreateClmmPool() {
           });
           clearInterval(timer);
         }
-      } catch {}
+      } catch {
+        // console.log(err)
+      }
     }, 1000 * 5);
     return () => clearInterval(timer);
   }, [requests])

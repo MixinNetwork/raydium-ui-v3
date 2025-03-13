@@ -348,7 +348,7 @@ export const useClmmStore = createStore<ClmmState>(
           nft2022: true,
           associatedOnly: true,
           checkCreateATAOwner: false,
-          withMetadata: "create" as "create",
+          withMetadata: "create" as "create" | "no-create",
           getEphemeralSigners: wallet ? await getEphemeralSigners(wallet) : undefined,
           computeBudgetConfig: createPoolBuildData ? undefined : computeBudgetConfig,
           txVersion,
@@ -445,13 +445,11 @@ export const useClmmStore = createStore<ClmmState>(
           const { transactions } = await createPoolBuildData.builder.sizeCheckBuildV0();
           if (transactions.length !== 1 || !poolNonce) throw new Error('invalid create pool transaction');
           transactions[0].message.recentBlockhash = poolNonce.nonce_hash;
-          // @ts-ignore
           const tx1 = Buffer.from(transactions[0].serialize()).toString('base64');  
           const { transactions: txs } = await buildData.builder.sizeCheckBuildV0();
           if (txs.length !== 1) throw new Error('invalid open position transaction');
           txs[0].message.recentBlockhash = nonce.nonce_hash;
           txs[0].sign(insInfo.signers);
-          // @ts-ignore
           const tx2 = Buffer.from(txs[0].serialize()).toString('base64');  
 
           const rentMap: Record<string, number> = {}
