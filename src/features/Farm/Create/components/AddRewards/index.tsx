@@ -1,6 +1,6 @@
 import Button from '@/components/Button'
 import PlusCircleIcon from '@/icons/misc/PlusCircleIcon'
-import { useAppStore } from '@/store'
+import { Token, useAppStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { Flex, HStack, Text } from '@chakra-ui/react'
 import { ApiV3Token } from '@raydium-io/raydium-sdk-v2'
@@ -23,7 +23,8 @@ export default function RewardAddItem(props: {
   const hasError = props.rewardInfos.some((r) => !r.isValid) || props.rewardInfos.length === 0
   const existsTokens = props.rewardInfos.map((r) => r.token).join(',')
   const tokenFilterFn = useCallback(
-    (token: ApiV3Token) => {
+    (t: Token | ApiV3Token) => {
+      const token = 'info' in t ? t.info : t;
       const existsTokenSet = new Set(existsTokens.split(','))
       return !existsTokenSet.has(token.address)
     },

@@ -1,4 +1,5 @@
 import { shakeUndefindedItem } from './shakeUndefindedItem'
+import dayjs from 'dayjs';
 
 type TimeStamp = string | number | Date
 /**
@@ -91,6 +92,14 @@ export const getUTCOffset = () => {
   const offset = Math.floor(new Date().getTimezoneOffset() / 60) * -1
   return (offset > 0 ? '+' : '') + offset
 }
+
+export const compare = (t1: string | number, t2: string | number) => {
+  const time1 = dayjs.utc(t1);
+  const time2 = dayjs.utc(t2);
+  if (time1.isAfter(time2)) return 1;
+  else if (time1.isSame(time2)) return 0;
+  return -1;
+};
 
 export const MINUTE_MILLISECONDS = 60 * 1000
 

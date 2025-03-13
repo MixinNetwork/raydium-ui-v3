@@ -23,7 +23,7 @@ import TokenAvatarPair from '@/components/TokenAvatarPair'
 import { debounce } from '@/utils/functionMethods'
 import { formatCurrency } from '@/utils/numberish/formatter'
 import useClmmBalance, { ClmmPosition } from '@/hooks/portfolio/clmm/useClmmBalance'
-import { useAppStore, useClmmStore, useTokenAccountStore } from '@/store'
+import { useAppStore, useClmmStore, UserAssetBalance, useTokenAccountStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import Button from '@/components/Button'
 import { wSolToSol } from '@/utils/token'
@@ -88,6 +88,11 @@ export default function AddLiquidityModal({
 
   const [computePairAmount, increaseLiquidityAct] = useClmmStore((s) => [s.computePairAmount, s.increaseLiquidityAct], shallow)
   const [tokenAmount, setTokenAmount] = useState(['', ''])
+
+  const [balance, setBalance] = useState<{
+    token1?: UserAssetBalance;
+    token2?: UserAssetBalance;
+  }>({})
 
   const computeRef = useRef(false)
   const focusPoolARef = useRef(true)
@@ -307,6 +312,7 @@ export default function AddLiquidityModal({
             disableSelectToken
             pool={poolInfo}
             readonly={!poolInfo || featureDisabled}
+            tokenBalance={balance}
             tokenAmount={tokenAmount}
             onFocusChange={handleFocusChange}
             onAmountChange={handleAmountChange}

@@ -2,7 +2,7 @@ import Button from '@/components/Button'
 import DatePickerModal from '@/components/FarmDatePickerModal'
 import TokenInput from '@/components/TokenInput'
 import { useEvent } from '@/hooks/useEvent'
-import { useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
+import { Token, useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { parseDateInfo } from '@/utils/date'
 import {
@@ -41,7 +41,7 @@ export default function AddAnotherRewardDialog({
 }: {
   defaultRewardInfo?: Partial<EditReward>
   isOpen: boolean
-  tokenFilterFn?: (token: TokenInfo) => boolean
+  tokenFilterFn?: (token: Token | TokenInfo) => boolean
   onSave: (rewardInfos: EditReward) => void
   onClose(): void
 }) {
@@ -68,7 +68,8 @@ export default function AddAnotherRewardDialog({
     setRewardInfos((s) => ({ ...s, ...partialInfo }))
   }
 
-  const onTokenChange = useEvent((token: TokenInfo | ApiV3Token) => {
+  const onTokenChange = useEvent((t: Token | TokenInfo | ApiV3Token) => {
+    const token = 'info' in t ? t.info : t;
     onChange({ mint: token })
   })
 

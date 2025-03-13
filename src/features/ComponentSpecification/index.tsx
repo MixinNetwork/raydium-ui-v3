@@ -649,7 +649,10 @@ function TokenInputExample() {
   const [amount, setAmount] = useState<string>('')
   return (
     <ComponentExamplePanel name="Token Input">
-      <TokenInput token={token} value={amount} onChange={setAmount} onTokenChange={(token) => setMint(token?.address || '')} />
+      <TokenInput token={token} value={amount} onChange={setAmount} onTokenChange={(t) => {
+        const token = 'info' in t ? t.info : t;
+        setMint(token?.address || '')
+      }} />
     </ComponentExamplePanel>
   )
 }

@@ -19,11 +19,17 @@ import {
   solToWSolToken,
   TxVersion,
   getTransferAmountFeeV2,
-  ClmmLockAddress
+  ClmmLockAddress,
+  TxBuilder,
+  Owner,
+  SqrtPriceMath,
+  ClmmInstrument,
+  mockV3CreatePoolInfo,
+  WSOLMint,
 } from '@raydium-io/raydium-sdk-v2'
-import { PublicKey, VersionedTransaction } from '@solana/web3.js'
+import { PublicKey, SystemProgram } from '@solana/web3.js'
 import createStore from '@/store/createStore'
-import { useAppStore, useTokenAccountStore, useLiquidityStore } from '@/store'
+import { useAppStore, useTokenAccountStore, useLiquidityStore, Token } from '@/store'
 import { isSolWSol } from '@/utils/token'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
 import { txStatusSubject } from '@/hooks/toast/useTxStatus'
@@ -40,6 +46,11 @@ import { ClmmLockInfo } from '@/hooks/portfolio/clmm/useClmmBalance'
 
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
+import { ComputerNonceResponse, ComputerSystemCallRequest } from '@/types/computer'
+import { buildInvoiceWithEntries, buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema, computerEmptyExtra } from '@/utils/mixin'
+import { attachInvoiceEntry, formatUnits, getInvoiceString, InvoiceEntry, newMixinInvoice, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
+import { CREATE_POOL_RENT_SIZES, OPEN_POSITION_RENT_SIZES, OperationTypeSystemCall, SOL_ASSET_ID, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
+import { initComputerClient } from '@/api/computer'
 
 export type CreatePoolBuildData =
   | TxBuildData<{ mockPoolInfo: ApiV3PoolInfoConcentratedItem; address: ClmmKeys }>
@@ -64,6 +75,11 @@ interface ClmmState {
   ) => Promise<{ txId: string; buildData?: MakeMultiTxData<TxVersion> }>
   openPositionAct: (
     props: {
+      nonce: ComputerNonceResponse
+      tokens?: {
+        token1: Token;
+        token2: Token;
+      }
       poolInfo: ApiV3PoolInfoConcentratedItem
       poolKeys?: ClmmKeys
       tickLower: number
@@ -72,15 +88,13 @@ interface ClmmState {
       otherAmountMax: string
       base: 'MintA' | 'MintB'
       createPoolBuildData?: CreatePoolBuildData
+      poolNonce?: ComputerNonceResponse
       onCloseToast?: () => void
     } & TxCallbackProps<{
       txId: string
       buildData: TxBuildData<OpenPositionFromBaseExtInfo> | TxV0BuildData<OpenPositionFromBaseExtInfo>
     }>
-  ) => Promise<{
-    txId: string
-    buildData?: MakeTxData<TxVersion.LEGACY, OpenPositionFromBaseExtInfo> | MakeTxData<TxVersion.V0, OpenPositionFromBaseExtInfo>
-  }>
+  ) => Promise<ComputerSystemCallRequest[]>
   closePositionAct: (
     props: {
       poolInfo: ApiV3PoolInfoConcentratedItem
@@ -134,12 +148,13 @@ interface ClmmState {
   fetchAmmConfigsAct: () => void
   createClmmPool: (props: {
     config: ApiClmmConfigInfo
-    token1: ApiV3Token
-    token2: ApiV3Token
+    token1: Token
+    token2: Token
     price: string
     execute?: boolean
     forerunCreate?: boolean
     getObserveState?: boolean
+    nonce?: ComputerNonceResponse
   }) => Promise<{
     txId: string
     buildData?:
@@ -280,6 +295,9 @@ export const useClmmStore = createStore<ClmmState>(
     },
 
     openPositionAct: async ({
+      tokens,
+      nonce,
+      poolNonce,
       poolInfo,
       poolKeys,
       base,
@@ -291,140 +309,255 @@ export const useClmmStore = createStore<ClmmState>(
       onCloseToast,
       ...txProps
     }) => {
-      const { raydium, wallet, txVersion } = useAppStore.getState()
-      if (!raydium) {
+      const { raydium, publicKey, wallet, txVersion, info, keystore, user, account, getComputerRecipient } = useAppStore.getState()
+      if (!poolInfo) return [];
+      const computer = getComputerRecipient()
+      if (!tokens || !raydium || !keystore || !user || !publicKey || !info || !account || !computer) {
         toastSubject.next({ noRpc: true })
-        return { txId: '' }
+        return [];
       }
-      if (!poolInfo) return { txId: '' }
-      try {
+      // try {
         const computeBudgetConfig = await getComputeBudgetConfig()
-        const buildData = await raydium.clmm.openPositionFromBase({
+
+        const owner = new PublicKey(publicKey)
+        const txBuilder = new TxBuilder({
+          connection: raydium.connection,
+          owner: new Owner(publicKey),
+          feePayer: new PublicKey(info.payer),
+          cluster: raydium.cluster
+        });
+        const nonceIns = SystemProgram.nonceAdvance({
+          noncePubkey: new PublicKey(nonce.nonce_address),
+          authorizedPubkey: new PublicKey(info.payer)
+        })
+        txBuilder.addInstruction({
+          instructions: [nonceIns],
+          instructionTypes: ["AdvanceNonceAccount"],
+        })
+
+        const params = {
           poolInfo,
-          poolKeys,
-          tickLower: Math.min(tickLower, tickUpper),
-          tickUpper: Math.max(tickLower, tickUpper),
-          base,
           ownerInfo: {
             useSOLBalance: isSolWSol(poolInfo.mintA.address) || isSolWSol(poolInfo.mintB.address)
           },
+          tickLower: Math.min(tickLower, tickUpper),
+          tickUpper: Math.max(tickLower, tickUpper),
+          base,
           baseAmount: new BN(baseAmount),
           otherAmountMax: new BN(otherAmountMax),
+          nft2022: true,
+          associatedOnly: true,
+          checkCreateATAOwner: false,
+          withMetadata: "create" as "create",
           getEphemeralSigners: wallet ? await getEphemeralSigners(wallet) : undefined,
           computeBudgetConfig: createPoolBuildData ? undefined : computeBudgetConfig,
           txVersion,
-          nft2022: true
-        })
-
-        const [amountA, amountB] = base === 'MintA' ? [baseAmount, otherAmountMax] : [otherAmountMax, baseAmount]
-        const meta = getTxMeta({
-          action: 'openPosition',
-          values: {
-            amountA:
-              new Decimal(amountA || 0)
-                .div(10 ** poolInfo.mintA.decimals)
-                .toDecimalPlaces(poolInfo.mintA.decimals)
-                .toString() || 0,
-            symbolA: getMintSymbol({ mint: poolInfo.mintA, transformSol: true }),
-            amountB:
-              new Decimal(amountB || 0)
-                .div(10 ** poolInfo.mintB.decimals)
-                .toDecimalPlaces(poolInfo.mintB.decimals)
-                .toString() || 0,
-            symbolB: getMintSymbol({ mint: poolInfo.mintB, transformSol: true })
-          }
-        })
-
-        const mintInfo = [poolInfo.mintA, poolInfo.mintB]
+        }
+        let ownerTokenAccountA: PublicKey | null = null;
+        let ownerTokenAccountB: PublicKey | null = null;
+        const mintAUseSOLBalance = params.ownerInfo.useSOLBalance && poolInfo.mintA.address === WSOLMint.toString();
+        const mintBUseSOLBalance = params.ownerInfo.useSOLBalance && poolInfo.mintB.address === WSOLMint.toString();
+        const [bnAmountA, bnAmountB] = base === "MintA" 
+          ? [params.baseAmount, params.otherAmountMax] 
+          : [params.otherAmountMax, params.baseAmount];
+          const { account: _ownerTokenAccountA, instructionParams: _tokenAccountAInstruction } =
+          await raydium.account.getOrCreateTokenAccount({
+            tokenProgram: poolInfo.mintA.programId,
+            mint: new PublicKey(poolInfo.mintA.address),
+            owner: owner,
+    
+            createInfo: {
+              payer: owner,
+              amount: bnAmountA,
+            },
+            skipCloseAccount: !mintAUseSOLBalance,
+            notUseTokenAccount: mintAUseSOLBalance,
+            associatedOnly: mintAUseSOLBalance ? false : params.associatedOnly,
+            checkCreateATAOwner: params.checkCreateATAOwner,
+          });
+        if (_ownerTokenAccountA) ownerTokenAccountA = _ownerTokenAccountA;
+        txBuilder.addInstruction(_tokenAccountAInstruction || {});
+    
+        const { account: _ownerTokenAccountB, instructionParams: _tokenAccountBInstruction } =
+          await raydium.account.getOrCreateTokenAccount({
+            tokenProgram: poolInfo.mintB.programId,
+            mint: new PublicKey(poolInfo.mintB.address),
+            owner: owner,
+    
+            createInfo: {
+              payer: owner,
+              amount: bnAmountB,
+            },
+            skipCloseAccount: !mintBUseSOLBalance,
+            notUseTokenAccount: mintBUseSOLBalance,
+            associatedOnly: mintBUseSOLBalance ? false : params.associatedOnly,
+            checkCreateATAOwner: params.checkCreateATAOwner,
+          });
+        if (_ownerTokenAccountB) ownerTokenAccountB = _ownerTokenAccountB;
+        txBuilder.addInstruction(_tokenAccountBInstruction || {});
+    
+        if (!ownerTokenAccountA || !ownerTokenAccountB)
+          throw new Error(`cannot found target token accounts tokenAccounts: ${poolInfo.mintA.address} ${ownerTokenAccountA?.toBase58()}, ${poolInfo.mintB.address} ${ownerTokenAccountB?.toBase58()}`);
+    
+        poolKeys = poolKeys || (await raydium.clmm.getClmmPoolKeys(poolInfo.id));
+        const insInfo = await ClmmInstrument.openPositionFromBaseInstructions({
+          poolInfo,
+          poolKeys,
+          ownerInfo: {
+            ...params.ownerInfo,
+            feePayer: owner,
+            wallet: owner,
+            tokenAccountA: ownerTokenAccountA!,
+            tokenAccountB: ownerTokenAccountB!,
+          },
+          tickLower,
+          tickUpper,
+          base,
+          baseAmount: params.baseAmount,
+          otherAmountMax: params.otherAmountMax,
+          withMetadata: params.withMetadata,
+          getEphemeralSigners: params.getEphemeralSigners,
+          nft2022: params.nft2022,
+        });
+    
+        txBuilder.addInstruction(insInfo);
+        const buildData = await txBuilder.versionBuild({
+          txVersion,
+          extInfo: { ...insInfo.address, recentBlockHash: nonce.nonce_hash },
+        });
 
         if (!buildData) {
           txProps.onError?.()
-          return { txId: '' }
+          return [];
         }
-
+        const amount1 = base === 'MintA' 
+          ? formatUnits(baseAmount, poolInfo.mintA.decimals).toString() 
+          : formatUnits(otherAmountMax, poolInfo.mintA.decimals).toString();
+        const amount2 = base === 'MintA' 
+          ? formatUnits(otherAmountMax, poolInfo.mintB.decimals).toString() 
+          : formatUnits(baseAmount, poolInfo.mintB.decimals).toString();
+        const token1 = tokens.token1.info.address === poolInfo.mintA.address ? tokens.token1 : tokens.token2;
+        const token2 = tokens.token1.info.address === poolInfo.mintB.address ? tokens.token1 : tokens.token2;
+        
         // create pool and open position
         if (createPoolBuildData) {
-          const createPoolMeta = getTxMeta({
-            action: 'createPool',
-            values: {}
-          })
-          createPoolBuildData.builder.addInstruction({
-            ...buildData.builder.AllTxData
-          })
-          createPoolBuildData.builder.addCustomComputeBudget(computeBudgetConfig)
+          const client = initComputerClient();     
+          const { transactions } = await createPoolBuildData.builder.sizeCheckBuildV0();
+          if (transactions.length !== 1 || !poolNonce) throw new Error('invalid create pool transaction');
+          transactions[0].message.recentBlockhash = poolNonce.nonce_hash;
+          // @ts-ignore
+          const tx1 = Buffer.from(transactions[0].serialize()).toString('base64');  
+          const { transactions: txs } = await buildData.builder.sizeCheckBuildV0();
+          if (txs.length !== 1) throw new Error('invalid open position transaction');
+          txs[0].message.recentBlockhash = nonce.nonce_hash;
+          txs[0].sign(insInfo.signers);
+          // @ts-ignore
+          const tx2 = Buffer.from(txs[0].serialize()).toString('base64');  
 
-          const { transactions, execute } = await createPoolBuildData.builder.sizeCheckBuildV0()
-
-          const txLength = transactions.length
-          const { toastId, processedId, handler } = getDefaultToastData({
-            txLength,
-            ...txProps
+          const rentMap: Record<string, number> = {}
+          let total1 = 0
+          let total2 = 0
+          const sizes = Array.from(new Set([...CREATE_POOL_RENT_SIZES, ...OPEN_POSITION_RENT_SIZES]));
+          const rents = await Promise.all(sizes.map(size => raydium.connection.getMinimumBalanceForRentExemption(size)))
+          sizes.forEach((size, index) => {
+            rentMap[size] = rents[index]
           })
-
-          const getSubTxTitle = (idx: number) =>
-            idx !== transactions.length - 1 ? 'transaction_history.create_pool' : 'transaction_history.name_add_liquidity'
-
-          return execute({
-            sequentially: true,
-            onTxUpdate: (data) => {
-              handleMultiTxRetry(data)
-              handleMultiTxToast({
-                toastId,
-                processedId: transformProcessData({ processedId, data }),
-                txLength,
-                meta: createPoolMeta,
-                handler,
-                getSubTxTitle
-              })
-            }
+          CREATE_POOL_RENT_SIZES.forEach(size => {
+            total1 += rentMap[size]
           })
-            .then(() => {
-              handleMultiTxToast({
-                toastId,
-                processedId: transformProcessData({ processedId, data: [] }),
-                txLength,
-                meta: createPoolMeta,
-                handler,
-                getSubTxTitle
-              })
-              return { txId: '', buildData }
-            })
-            .catch((e) => {
-              toastSubject.next({ txError: e, ...createPoolMeta })
-              txProps.onError?.()
-              txProps.onFinally?.()
-              return { txId: '' }
-            })
-            .finally(txLength > 1 ? undefined : txProps.onFinally)
+          OPEN_POSITION_RENT_SIZES.forEach(size => {
+            total2 += rentMap[size]
+          })
+          total1 = Math.floor(total1 * 1.1)
+          total2 = Math.floor(total2 * 1.1)
+
+          const invoice = newMixinInvoice(computer);
+          if (!invoice) throw new Error('computer connection failed');
+          const storage1 = await client.storageTx(tx1);
+          const trace = uniqueConversationID(storage1.hash, "system call");
+          const extra1 = buildComputerExtra(
+            info.members.app_id, 
+            OperationTypeSystemCall, 
+            buildSystemCallInvoiceExtra(account.id, trace, true, storage1.hash)
+          )
+          attachInvoiceEntry(invoice, {
+            trace_id: uniqueConversationID(trace, SOL_ASSET_ID),
+            asset_id: SOL_ASSET_ID,
+            amount: formatUnits(total1, SOL_DECIMAL).toString(),
+            extra: computerEmptyExtra,
+            index_references: [],
+            hash_references: []
+          })
+          attachInvoiceEntry(invoice, {
+            trace_id: trace,
+            asset_id: XIN_ASSET_ID,
+            amount: info.params.operation.price,
+            extra: Buffer.from(extra1),
+            index_references: [0],
+            hash_references: []
+          })
+          console.log(invoice)
+          const req1 = {
+            trace: trace,
+            value: handleInvoiceSchema(getInvoiceString(invoice)),
+          }
+
+          const storage2 = await client.storageTx(tx2);
+          const trace2 = uniqueConversationID(storage2.hash, "system call");
+          const extra2 = buildComputerExtra(
+            info.members.app_id, 
+            OperationTypeSystemCall, 
+            buildSystemCallInvoiceExtra(account.id, trace2, false, storage2.hash)
+          )
+          const invoice2 = buildInvoiceWithEntries(
+            computer, 
+            {
+              trace_id: trace2,
+              asset_id: XIN_ASSET_ID,
+              amount: info.params.operation.price,
+              extra: Buffer.from(extra2),
+              index_references: [],
+              hash_references: []
+            }, 
+            [
+              {
+                trace_id: uniqueConversationID(uniqueConversationID(trace2, SOL_ASSET_ID), "rent"),
+                asset_id: SOL_ASSET_ID,
+                amount: formatUnits(total2, SOL_DECIMAL).toString(),
+                extra: computerEmptyExtra,
+                index_references: [],
+                hash_references: []
+              },
+              {
+                trace_id: uniqueConversationID(trace2, tokens.token1.balance.asset_id),
+                asset_id: token1.balance.asset_id,
+                amount: amount1,
+                extra: computerEmptyExtra,
+                index_references: [],
+                hash_references: []
+              },
+              {
+                trace_id: uniqueConversationID(trace2, tokens.token2.balance.asset_id),
+                asset_id: token2.balance.asset_id,
+                amount: amount2,
+                extra: computerEmptyExtra,
+                index_references: [0],
+                hash_references: []
+              }
+            ]
+          )
+          const req2 = {
+            trace: trace2,
+            value: handleInvoiceSchema(getInvoiceString(invoice2)),
+          }
+          return [req1, req2];
         }
-
-        return buildData
-          .execute()
-          .then(({ txId, signedTx }) => {
-            txStatusSubject.next({
-              txId,
-              ...meta,
-              mintInfo,
-              signedTx,
-              onClose: onCloseToast,
-              onError: txProps.onError,
-              onConfirmed: txProps.onConfirmed
-            })
-            txProps.onSent?.({ txId, buildData })
-            return { txId, buildData }
-          })
-          .catch((e) => {
-            txProps.onError?.()
-            toastSubject.next({ txError: e, ...meta })
-            return { txId: '' }
-          })
-          .finally(txProps.onFinally)
-      } catch (e: any) {
-        txProps.onError?.()
-        txProps.onFinally?.()
-        console.error(e.message)
-        return { txId: '' }
-      }
+        return [];
+      // } catch (e: any) {
+      //   txProps.onError?.()
+      //   txProps.onFinally?.()
+      //   console.error(e)
+      // }
     },
 
     removeLiquidityAct: async ({
@@ -847,25 +980,112 @@ export const useClmmStore = createStore<ClmmState>(
         .finally(txProps.onFinally)
     },
 
-    createClmmPool: async ({ token1, token2, config, price, execute, forerunCreate, getObserveState }) => {
-      const { raydium, publicKey, txVersion, programIdConfig } = useAppStore.getState()
-      if (!raydium || !publicKey) {
+    createClmmPool: async ({ token1, token2, config, price, execute, forerunCreate, getObserveState, nonce }) => {
+      const { raydium, publicKey, txVersion, programIdConfig, info, getUserMix } = useAppStore.getState()
+      if (!raydium || !publicKey || !info) {
         toastSubject.next({ noRpc: true })
         return { txId: '' }
       }
       try {
         const computeBudgetConfig = forerunCreate ? undefined : await getComputeBudgetConfig()
-        const buildData = await raydium.clmm.createPool({
+        if (!raydium.owner) raydium.setOwner(publicKey);
+        const txBuilder = new TxBuilder({
+          connection: raydium.connection,
+          owner: new Owner(publicKey),
+          feePayer: new PublicKey(info.payer),
+          cluster: raydium.cluster
+        });
+
+        let hash = ''
+        if (nonce) {
+          const nonceIns = SystemProgram.nonceAdvance({
+            noncePubkey: new PublicKey(nonce.nonce_address),
+            authorizedPubkey: new PublicKey(info.payer)
+          })
+          txBuilder.addInstruction({
+            instructions: [nonceIns],
+            instructionTypes: ["AdvanceNonceAccount"],
+          })
+          hash = nonce.nonce_hash
+        }
+
+        const mint1 = { ...token1.info, address: token1.info.address }
+        const mint2 = { ...token2.info, address: token2.info.address }
+        const initialPrice = new Decimal(price);
+        const [mintA, mintB, initPrice] = new BN(new PublicKey(mint1.address).toBuffer()).gt(
+          new BN(new PublicKey(mint2.address).toBuffer()),
+        )
+          ? [mint2, mint1, new Decimal(1).div(initialPrice)]
+          : [mint1, mint2, initialPrice];
+        const initialPriceX64 = SqrtPriceMath.priceToSqrtPriceX64(initPrice, mintA.decimals, mintB.decimals);
+        const ammConfig = { ...config, id: new PublicKey(config.id), fundOwner: '', description: '' }
+        const insInfo = await ClmmInstrument.createPoolInstructions({
+          connection: raydium.connection,
           programId: programIdConfig.CLMM_PROGRAM_ID,
-          mint1: { ...token1, address: token1.address },
-          mint2: { ...token2, address: token2.address },
-          ammConfig: { ...config, id: new PublicKey(config.id), fundOwner: '', description: '' },
-          initialPrice: new Decimal(price),
-          computeBudgetConfig,
-          forerunCreate,
-          getObserveState,
-          txVersion
-        })
+          owner: new PublicKey(publicKey),
+          mintA,
+          mintB,
+          ammConfigId: ammConfig.id,
+          initialPriceX64,
+          forerunCreate: !getObserveState && forerunCreate,
+        });
+        txBuilder.addInstruction(insInfo);
+        txBuilder.addCustomComputeBudget(computeBudgetConfig);
+        const buildData = await txBuilder.versionBuild({
+          txVersion,
+          extInfo: {
+            recentBlockHash: hash ? hash : undefined,
+            address: {
+              ...insInfo.address,
+              observationId: insInfo.address.observationId.toBase58(),
+              exBitmapAccount: insInfo.address.exBitmapAccount.toBase58(),
+              programId: programIdConfig.CLMM_PROGRAM_ID.toString(),
+              id: insInfo.address.poolId.toString(),
+              mintA,
+              mintB,
+              openTime: '0',
+              vault: { A: insInfo.address.mintAVault.toString(), B: insInfo.address.mintBVault.toString() },
+              rewardInfos: [],
+              config: {
+                id: ammConfig.id.toString(),
+                index: ammConfig.index,
+                protocolFeeRate: ammConfig.protocolFeeRate,
+                tradeFeeRate: ammConfig.tradeFeeRate,
+                tickSpacing: ammConfig.tickSpacing,
+                fundFeeRate: ammConfig.fundFeeRate,
+                description: ammConfig.description,
+                defaultRange: 0,
+                defaultRangePoint: [],
+              },
+            },
+            mockPoolInfo: {
+              type: "Concentrated" as "Concentrated",
+              rewardDefaultPoolInfos: "Clmm" as "Clmm",
+              id: insInfo.address.poolId.toString(),
+              mintA,
+              mintB,
+              feeRate: ammConfig.tradeFeeRate,
+              openTime: '0',
+              programId: programIdConfig.CLMM_PROGRAM_ID.toString(),
+              price: initPrice.toNumber(),
+              config: {
+                id: ammConfig.id.toString(),
+                index: ammConfig.index,
+                protocolFeeRate: ammConfig.protocolFeeRate,
+                tradeFeeRate: ammConfig.tradeFeeRate,
+                tickSpacing: ammConfig.tickSpacing,
+                fundFeeRate: ammConfig.fundFeeRate,
+                description: ammConfig.description,
+                defaultRange: 0,
+                defaultRangePoint: [],
+              },
+              burnPercent: 0,
+              ...mockV3CreatePoolInfo,
+            },
+            forerunCreate,
+          },
+        }) ;
+
         const { execute: executeTx } = buildData
         if (execute) {
           const meta = getTxMeta({
@@ -875,7 +1095,7 @@ export const useClmmStore = createStore<ClmmState>(
 
           return executeTx()
             .then(({ txId, signedTx }) => {
-              txStatusSubject.next({ txId, ...meta, signedTx, mintInfo: [token1, token2] })
+              txStatusSubject.next({ txId, ...meta, signedTx, mintInfo: [token1.info, token2.info] })
               return { txId, buildData }
             })
             .catch((e) => {
@@ -885,6 +1105,7 @@ export const useClmmStore = createStore<ClmmState>(
         }
         return { txId: '', buildData }
       } catch (e: any) {
+        console.error(e)
         toastSubject.next({
           status: 'error',
           title: 'Error',
@@ -957,7 +1178,7 @@ export const useClmmStore = createStore<ClmmState>(
       })
     },
     getPriceAndTick: ({ pool, price, baseIn }) => {
-      if (!pool) return
+      if (!pool || price === '0') return
       try {
         const p = new Decimal(price || '0').clamp(1 / 10 ** Math.max(pool.mintA.decimals, pool.mintB.decimals), Number.MAX_SAFE_INTEGER)
         return TickUtils.getPriceAndTick({

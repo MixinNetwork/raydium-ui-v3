@@ -19,7 +19,7 @@ import useTokenPrice from '@/hooks/token/useTokenPrice'
 import { useEvent } from '@/hooks/useEvent'
 import BalanceWalletIcon from '@/icons/misc/BalanceWalletIcon'
 import ChevronDownIcon from '@/icons/misc/ChevronDownIcon'
-import { useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
+import { Token, useAppStore, UserAssetBalance, useTokenAccountStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { trimTrailZero, formatCurrency, detectedSeparator } from '@/utils/numberish/formatter'
 
@@ -37,6 +37,8 @@ export interface InputActionRef {
   refreshPrice: () => void
 }
 export interface TokenInputProps extends Pick<TokenSelectDialogProps, 'filterFn'> {
+  fromMixin?: boolean
+  fromMixinFilter?: boolean
   id?: string
   name?: string
   /**
@@ -65,6 +67,8 @@ export interface TokenInputProps extends Pick<TokenSelectDialogProps, 'filterFn'
   readonly?: boolean
   loading?: boolean
 
+  balance?: UserAssetBalance;
+
   /** default is empty string */
   value?: string
 
@@ -92,7 +96,7 @@ export interface TokenInputProps extends Pick<TokenSelectDialogProps, 'filterFn'
   topBlockSx?: StackProps
   onChange?: (val: string) => void
   /** for library:fomik  */
-  onTokenChange?: (token: TokenInfo | ApiV3Token) => void
+  onTokenChange?: (token: Token | TokenInfo | ApiV3Token) => void
   onFocus?: () => void
 
   defaultUnknownToken?: TokenInfo
@@ -126,6 +130,7 @@ function TokenInput(props: TokenInputProps) {
     filterFn,
     topLeftLabel,
     readonly,
+    balance,
     value: inputValue,
     loading,
     width,
@@ -133,7 +138,9 @@ function TokenInput(props: TokenInputProps) {
     ctrSx,
     sx,
     defaultUnknownToken,
-    actionRef
+    actionRef,
+    fromMixin = false,
+    fromMixinFilter = false,
   } = props
   const { isMobile } = useResponsive()
   const setExtraTokenListAct = useTokenStore((s) => s.setExtraTokenListAct)
@@ -169,12 +176,12 @@ function TokenInput(props: TokenInputProps) {
   })
   const value = shakeValueDecimal(inputValue, token?.decimals)
   const price = tokenPrice[token?.address || '']?.value
-  const totalPrice = price && value ? new Decimal(price ?? 0).mul(value).toString() : ''
 
   // balance
-  const getTokenBalanceUiAmount = useTokenAccountStore((s) => s.getTokenBalanceUiAmount)
-  const balanceInfo = getTokenBalanceUiAmount({ mint: token?.address || '', decimals: token?.decimals })
-  const balanceAmount = balanceInfo.amount
+  const balanceAmount = balance && balance.asset 
+    ? new Decimal(balance.total_amount)
+    : new Decimal(0)
+  const totalPrice = new Decimal(value || 0).mul(balance?.asset?.price_usd || 0)
   const balanceMaxString = hideBalance
     ? null
     : trimTrailZero(balanceAmount.mul(maxMultiplier || 1).toFixed(token?.decimals ?? 6, Decimal.ROUND_FLOOR))
@@ -231,14 +238,15 @@ function TokenInput(props: TokenInputProps) {
     return token?.tags.includes('hasFreeze') && !whiteListMap.has(token.address)
   })
 
-  const handleSelectToken = useEvent((token: TokenInfo) => {
-    const isFreeze = isFreezeToken(token)
+  const handleSelectToken = useEvent((token: TokenInfo | Token) => {
+    const t = 'info' in token ? token.info : token
+    const isFreeze = isFreezeToken(t)
     if (isFreeze) {
-      setFreezeToken(token)
+      setFreezeToken(t)
     }
-    const shouldShowUnknownTokenConfirm = isUnknownToken(token)
+    const shouldShowUnknownTokenConfirm = isUnknownToken(t)
     if (shouldShowUnknownTokenConfirm) {
-      setUnknownToken(token)
+      setUnknownToken(t)
       onOpenUnknownTokenConfirm()
       return
     }
@@ -431,7 +439,7 @@ function TokenInput(props: TokenInputProps) {
           <Text textAlign="right">~{formatCurrency(totalPrice, { symbol: '$', maximumDecimalTrailingZeroes: 5 })}</Text>
         </GridItem>
       </Grid>
-      <TokenSelectDialog isOpen={isOpen} onClose={onClose} onSelectValue={handleSelectToken} filterFn={filterFn} ref={tokenListRef} />
+      <TokenSelectDialog fromMixin={fromMixin} fromMixinFilter={fromMixinFilter} isOpen={isOpen} onClose={onClose} onSelectValue={handleSelectToken} filterFn={filterFn} ref={tokenListRef} />
       {unknownToken !== undefined && (
         <TokenUnknownAddDialog
           isOpen={isOpenUnknownTokenConfirm}

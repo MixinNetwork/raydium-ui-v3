@@ -26,7 +26,7 @@ import { Select } from '@/components/Select'
 import HorizontalSwitchSmallIcon from '@/icons/misc/HorizontalSwitchSmallIcon'
 import AddLiquidityPlus from '@/icons/misc/AddLiquidityPlus'
 import SubtractIcon from '@/icons/misc/SubtractIcon'
-import { useLiquidityStore, useTokenStore } from '@/store'
+import { Token, useLiquidityStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { wSolToSolString, wsolToSolToken } from '@/utils/token'
 import { TxErrorModal } from '@/components/Modal/TxErrorModal'
@@ -140,7 +140,8 @@ export default function Initialize({ isAmmV4 }: { isAmmV4: boolean }) {
   )
 
   const handleSelectToken = useCallback(
-    (token: TokenInfo | ApiV3Token, side?: 'input' | 'output') => {
+    (t: Token | TokenInfo | ApiV3Token, side?: 'input' | 'output') => {
+      const token = 'info' in t ? t.info : t;
       if (side === 'input') {
         setInputMint(token.address)
         setOutputMint((mint) => (token.address === mint ? '' : mint))

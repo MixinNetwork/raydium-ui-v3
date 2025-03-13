@@ -4,33 +4,15 @@ import React, { useMemo, useState } from 'react'
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base'
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react'
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
-import { GlowWalletAdapter } from '@solana/wallet-adapter-glow'
-import { ExodusWalletAdapter } from '@solana/wallet-adapter-exodus'
-import { SlopeWalletAdapter } from '@solana/wallet-adapter-slope'
-import { SolflareWalletAdapter, initialize } from '@solflare-wallet/wallet-adapter'
-import {
-  PhantomWalletAdapter,
-  TorusWalletAdapter,
-  TrustWalletAdapter,
-  // LedgerWalletAdapter,
-  MathWalletAdapter,
-  TokenPocketWalletAdapter,
-  CoinbaseWalletAdapter,
-  SolongWalletAdapter,
-  Coin98WalletAdapter,
-  SafePalWalletAdapter,
-  BitpieWalletAdapter,
-  BitgetWalletAdapter
-} from '@solana/wallet-adapter-wallets'
+import { initialize } from '@solflare-wallet/wallet-adapter'
+import { UnsafeBurnerWalletAdapter } from '@solana/wallet-adapter-wallets'
 import { useAppStore, defaultNetWork, defaultEndpoint } from '../store/useAppStore'
 import { registerMoonGateWallet } from '@moongate/moongate-adapter'
-import { TipLinkWalletAdapter } from '@tiplink/wallet-adapter'
 import { WalletConnectWalletAdapter } from '@walletconnect/solana-adapter'
 
 import { type Adapter, type WalletError } from '@solana/wallet-adapter-base'
 import { sendWalletEvent } from '@/api/event'
 import { useEvent } from '@/hooks/useEvent'
-import { LedgerWalletAdapter } from './Ledger/LedgerWalletAdapter'
 
 initialize()
 
@@ -91,28 +73,8 @@ const App: FC<PropsWithChildren<any>> = ({ children }) => {
 
   const wallets = useMemo(
     () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
-      new SlopeWalletAdapter({ endpoint }),
-      new TorusWalletAdapter(),
-      new LedgerWalletAdapter(),
+      new UnsafeBurnerWalletAdapter(),
       ..._walletConnect,
-      new GlowWalletAdapter(),
-      new TrustWalletAdapter(),
-      new MathWalletAdapter({ endpoint }),
-      new TokenPocketWalletAdapter(),
-      new CoinbaseWalletAdapter({ endpoint }),
-      new SolongWalletAdapter({ endpoint }),
-      new Coin98WalletAdapter({ endpoint }),
-      new SafePalWalletAdapter({ endpoint }),
-      new BitpieWalletAdapter({ endpoint }),
-      new BitgetWalletAdapter({ endpoint }),
-      new ExodusWalletAdapter({ endpoint }),
-      new TipLinkWalletAdapter({
-        clientId: process.env.NEXT_PUBLIC_WALLET_TIP_WALLET_KEY ?? '',
-        title: 'Raydium',
-        theme: 'system'
-      }) as unknown as Adapter
     ],
     [network, endpoint]
   )

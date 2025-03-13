@@ -21,7 +21,7 @@ import { refreshCreatedFarm } from '@/hooks/portfolio/farm/useCreatedFarmInfo'
 import { refreshPoolCache } from '@/hooks/pool/useFetchPoolList'
 import { useEvent } from '@/hooks/useEvent'
 import PlusCircleIcon from '@/icons/misc/PlusCircleIcon'
-import { useAppStore, useClmmStore, useFarmStore } from '@/store'
+import { Token, useAppStore, useClmmStore, useFarmStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 
 import SubPageNote from '@/components/SubPageNote'
@@ -215,7 +215,8 @@ export default function FarmEdit() {
     handleCheckRemainRewardsCount()
   })
 
-  const tokenFilterFn = useEvent((token: TokenInfo, escapeExistMint?: string) => {
+  const tokenFilterFn = useEvent((t: Token | TokenInfo, escapeExistMint?: string) => {
+    const token = 'info' in t ? t.info : t;
     let isClmmRewardValid = true
     const existedTokens = new Set([
       ...rewardData.map((r) => r.mint.address),

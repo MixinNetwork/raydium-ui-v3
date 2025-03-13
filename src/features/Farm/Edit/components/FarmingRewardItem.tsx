@@ -4,7 +4,7 @@ import { TokenInfo } from '@raydium-io/raydium-sdk-v2'
 
 import TokenAvatar from '@/components/TokenAvatar'
 import { useEvent } from '@/hooks/useEvent'
-import { useAppStore } from '@/store'
+import { Token, useAppStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { DAY_SECONDS } from '@/utils/date'
 import { formatCurrency } from '@/utils/numberish/formatter'
@@ -48,8 +48,9 @@ export default function ExistFarmingRewardItem({
 
   const [currentStatus, setCurrentStatus] = useState<FarmStatus>(reward.status)
 
-  const filterFn = useEvent((token: TokenInfo) => {
+  const filterFn = useEvent((t: Token | TokenInfo) => {
     if (!tokenFilterFn) return true
+    const token = 'info' in t ? t.info : t;
     return tokenFilterFn(token, reward.mint.address)
   })
 

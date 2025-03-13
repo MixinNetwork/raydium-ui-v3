@@ -23,7 +23,7 @@ import TokenInput from '@/components/TokenInput'
 import { useEvent } from '@/hooks/useEvent'
 import { colors } from '@/theme/cssVariables'
 import { DAY_SECONDS, parseDateInfo, WEEK_SECONDS } from '@/utils/date'
-import { useAppStore, useTokenAccountStore } from '@/store'
+import { Token, useAppStore, useTokenAccountStore } from '@/store'
 import { EditReward } from '../util'
 import useAddNewRewardSchema from '../schema/useAddNewRewardSchema'
 import dayjs from 'dayjs'
@@ -48,7 +48,7 @@ export default function AddMoreRewardDialog({
   defaultRewardInfo: EditReward
   isOpen: boolean
   isEcoSystemAddMore?: boolean
-  tokenFilterFn?: (token: TokenInfo) => boolean
+  tokenFilterFn?: (token: Token | TokenInfo) => boolean
   onSave: (rewardInfos: EditReward) => void
   onClose(): void
 }) {
@@ -78,8 +78,9 @@ export default function AddMoreRewardDialog({
     setRewardInfos((s) => ({ ...s, ...partialInfo }))
   }
 
-  const onTokenChange = useEvent((mint: ApiV3Token) => {
-    onChange({ ...rewardInfo, mint })
+  const onTokenChange = useEvent((mint: Token | ApiV3Token) => {
+    const t = 'info' in mint ? mint.info : mint
+    onChange({ ...rewardInfo, mint: t })
   })
 
   const onAmountChange = useEvent((valNumber: string) => {

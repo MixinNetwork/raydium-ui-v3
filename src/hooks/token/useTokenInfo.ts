@@ -5,15 +5,19 @@ import { getTokenInfo } from './api'
 import { useTokenStore } from '@/store/useTokenStore'
 import { useAppStore } from '@/store/useAppStore'
 import { getMintSymbol } from '@/utils/token'
+import { SafeAsset } from '@mixin.dev/mixin-node-sdk'
+import { SOL_ASSET_ID } from '@/utils/constant'
 
 export default function useTokenInfo({
   mint,
   programId,
-  skipTokenMap
+  skipTokenMap,
+  asset
 }: {
   mint?: string | PublicKey
   programId?: PublicKey | undefined
   skipTokenMap?: boolean
+  asset?: SafeAsset
 }) {
   const tokenMap = useTokenStore((s) => s.tokenMap)
   const connection = useAppStore((s) => s.connection)
@@ -32,11 +36,19 @@ export default function useTokenInfo({
     if (!info) {
       setLoading(true)
       getTokenInfo({ mint, connection, programId }).then((r) => {
-        if (r)
+        if (r) {
+          if (asset && asset.chain_id !== SOL_ASSET_ID) 
+            r = {
+              ...r,
+              logoURI: asset.icon_url,
+              symbol: asset.symbol,
+              name: `${asset.name} (Mixin)`
+            }
           setTokenInfo({
             ...r,
             symbol: getMintSymbol({ mint: r })
           })
+        }
         setLoading(false)
       })
       return

@@ -11,18 +11,20 @@ import { NewRewardInfo } from '../../type'
 import Decimal from 'decimal.js'
 import { useTranslation } from 'react-i18next'
 import { formatToRawLocaleStr } from '@/utils/numberish/formatter'
+import { Token } from '@/store'
 
 type RewardBodyProps = {
   rewardInfo: NewRewardInfo
   onChange: (rewardInfo: NewRewardInfo) => void
-  tokenFilterFn: (token: ApiV3Token) => boolean
+  tokenFilterFn: (token: Token | ApiV3Token) => boolean
 }
 
 export default function RewardBody({ rewardInfo, tokenFilterFn, onChange }: RewardBodyProps) {
   const { isOpen, onClose, onOpen } = useDisclosure()
   const { t } = useTranslation()
 
-  const onTokenChange = useEvent((token: TokenInfo | ApiV3Token) => {
+  const onTokenChange = useEvent((t: Token | TokenInfo | ApiV3Token) => {
+    const token = 'info' in t ? t.info : t;
     onChange({ ...rewardInfo, token })
   })
   const onAmountChange = useEvent((valNumber: string) => {

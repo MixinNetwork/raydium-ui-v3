@@ -13,14 +13,19 @@ import {
 } from '@raydium-io/raydium-sdk-v2'
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base'
 import { Wallet } from '@solana/wallet-adapter-react'
+import { buildMixAddress, MixinApi, SafeAsset, SafeOutputsRequest, SafeUtxoOutput, UserResponse, type Keystore } from '@mixin.dev/mixin-node-sdk';
 import createStore from './createStore'
 import { blackJupMintSet, useTokenStore } from './useTokenStore'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
 import axios from '@/api/axios'
+import { initComputerClient } from '@/api/computer';
 import { isValidUrl } from '@/utils/url'
 import { setStorageItem, getStorageItem } from '@/utils/localStorage'
 import { retry, isProdEnv } from '@/utils/common'
 import { compare } from 'compare-versions'
+import { ComputerAssetResponse, ComputerInfoResponse, ComputerUserResponse } from '@/types/computer';
+import { add } from '@/utils/number';
+import { SOL_ASSET_ID } from '@/utils/constant';
 
 export const defaultNetWork = WalletAdapterNetwork.Mainnet // Can be set to 'devnet', 'testnet', or 'mainnet-beta'
 export const defaultEndpoint = clusterApiUrl(defaultNetWork) // You can also provide a custom RPC endpoint
@@ -69,7 +74,39 @@ interface RpcItem {
   name: string
 }
 
+export type MixinClient = ReturnType<typeof MixinApi>;
+
+export interface UserAssetBalance {
+  asset_id: string;
+  total_amount: string;
+  outputs: SafeUtxoOutput[];
+  asset?: SafeAsset;
+  address?: string;
+}
+
+export interface Token {
+  info: TokenInfo;
+  balance: UserAssetBalance;
+}
+
 interface AppState {
+  user?: UserResponse;
+  keystore?: Keystore;
+  balances: Record<string, UserAssetBalance>;
+  getMixinClient: () => MixinClient;
+  setKeystore: (k :Keystore) => MixinClient;
+  getMe: () => Promise<void>;
+  updateBalances: (cas: ComputerAssetResponse[]) => Promise<void>;
+  getUserMix: () => string;
+
+  info?: ComputerInfoResponse;
+  computer_assets: ComputerAssetResponse[];
+  account?: ComputerUserResponse;
+  getComputerInfo: () => Promise<void>;
+  getComputerAssets: () => Promise<void>;
+  getComputerAccount: () => Promise<void>;
+  getComputerRecipient: () => string;
+
   raydium?: Raydium
   connection?: Connection
   signAllTransactions?: (<T extends Transaction | VersionedTransaction>(transaction: T[]) => Promise<T[]>) | undefined
@@ -126,7 +163,25 @@ interface AppState {
   fetchPriorityFeeAct: () => Promise<void>
 }
 
+const loadKeystore = () => {
+  try {
+    const value = localStorage.getItem('keystore');
+    if (!value) return undefined
+    return JSON.parse(value) as Keystore;
+  } catch {
+    return undefined
+  }
+};
+const saveKeystore = (k: Keystore) => {
+  localStorage.setItem('keystore', JSON.stringify(k));
+}
+const client = initComputerClient();
+
 const appInitState = {
+  keystore: loadKeystore(),
+  balances: {},
+  computer_assets: [],
+
   raydium: undefined,
   initialing: false,
   connected: false,
@@ -167,11 +222,118 @@ let epochInfoCache = {
 export const useAppStore = createStore<AppState>(
   (set, get) => ({
     ...appInitState,
+    setKeystore: (keystore: Keystore) => {
+      saveKeystore(keystore);
+      set({ keystore })
+      return MixinApi({ keystore });
+    },
+    getMixinClient: () => {
+      const { keystore } = get();
+      return MixinApi({ keystore });
+    },
+    getMe: async () => {
+      const { keystore } = get();
+      if (!keystore) return;
+      const mc = MixinApi({ keystore });
+      const user = await mc.user.profile();
+      const mix = buildMixAddress({
+        version: 2,
+        xinMembers: [],
+        uuidMembers: [user.user_id],
+        threshold: 1
+      })
+      const account = await client.fetchUser(mix);
+      if (account) 
+        set({ user, account, connected: true, publicKey: new PublicKey(account.chain_address) });
+      else
+        set({ user });
+    },
+    getUserMix: () => {
+      const { user } = get();
+      if (!user) return '';
+      return buildMixAddress({
+        version: 2,
+        xinMembers: [],
+        uuidMembers: [user.user_id],
+        threshold: 1
+      })
+    },
+    updateBalances: async (as: ComputerAssetResponse[]) => {
+      const { user, getMixinClient } = get();
+      if (!user) return;
+      const client = getMixinClient();
+      const members = [user.user_id];
+      let offset = 0
+      let total: SafeUtxoOutput[] = []
+      while(true) {
+        const outputs = await client.utxo.safeOutputs({
+          limit: 500,
+          members,
+          threshold: 1,
+          state: 'unspent',
+          offset
+        });
+        total = [...total, ...outputs]
+        if (outputs.length < 500) {
+          break;
+        }
+        offset = outputs[outputs.length - 1].sequence + 1
+      }
+      const bm = total.reduce((prev, cur) => {
+        const key = cur.asset_id;
+        if (prev[key]) {
+          prev[key].outputs = [...prev[key].outputs, cur];
+          prev[key].total_amount = add(prev[key].total_amount, cur.amount).toString();
+        } else {
+          const address = as.find(a => a.asset_id === cur.asset_id)?.address;
+          prev[key] = {
+            asset_id: cur.asset_id,
+            total_amount: cur.amount,
+            outputs: [cur],
+            address,
+          }
+        }
+        return prev
+      }, {} as Record<string, UserAssetBalance>)
+      const assets = await client.safe.fetchAssets(Object.keys(bm));
+      assets.forEach((asset) => {
+        bm[asset.asset_id].asset = asset;
+        if (asset.chain_id === SOL_ASSET_ID) 
+          bm[asset.asset_id].address = asset.asset_key;
+      });
+      set({ balances: bm })
+    },
+    getComputerInfo: async () => {
+      const info = await client.fetchInfo();
+      if (info) set({ info });
+    },
+    getComputerAssets: async () => {
+      const assets = await client.fetchAssets();
+      const { computer_assets: current } = get();
+      if (assets.length > current.length) set({ computer_assets: assets });
+    },
+    getComputerAccount: async () => {
+      const { user, getUserMix } = get();
+      if (!user) return;
+      const account = await client.fetchUser(getUserMix());
+      if (account) set({ account, connected: true, publicKey: new PublicKey(account.chain_address) });
+    },
+    getComputerRecipient: () => {
+      const { info } = get();
+      if (!info) return '';
+      return buildMixAddress({
+        version: 2,
+        xinMembers: [],
+        uuidMembers: info.members.members,
+        threshold: info.members.threshold,
+      })
+    },
+
     initRaydiumAct: async (payload) => {
       const action = { type: 'initRaydiumAct' }
-      const { initialing, urlConfigs, rpcNodeUrl, jupTokenType, displayTokenSettings } = get()
-      if (initialing || !rpcNodeUrl) return
-      const connection = payload.connection || new Connection(rpcNodeUrl)
+      const { initialing, urlConfigs, jupTokenType, displayTokenSettings } = get()
+      if (initialing) return
+      const connection = new Connection(process.env.NEXT_PUBLIC_RPC!)
       set({ initialing: true }, false, action)
       const isDev = window.location.host === 'localhost:3002'
 
@@ -231,7 +393,7 @@ export const useAppStore = createStore<AppState>(
         false,
         action
       )
-      set({ raydium, initialing: false, connected: !!(payload.owner || get().publicKey) }, false, action)
+      set({ raydium, initialing: false, }, false, action)
       set(
         {
           featureDisabled: {
@@ -297,9 +459,11 @@ export const useAppStore = createStore<AppState>(
           data: { rpcs }
         } = await axios.get<{ rpcs: RpcItem[] }>(urlConfigs.BASE_HOST + urlConfigs.RPCS)
         set({ rpcs }, false, { type: 'fetchRpcsAct' })
-        const localRpcNode: { rpcNode?: RpcItem; url?: string } = JSON.parse(
-          getStorageItem(isProdEnv() ? RPC_URL_PROD_KEY : RPC_URL_KEY) || '{}'
-        )
+        const localRpcNode: { rpcNode?: RpcItem; url?: string } = process.env.NEXT_PUBLIC_RPC
+          ? {
+            url: process.env.NEXT_PUBLIC_RPC,
+          }
+          : {}
 
         let i = 0
         const checkAndSetRpcNode = async () => {

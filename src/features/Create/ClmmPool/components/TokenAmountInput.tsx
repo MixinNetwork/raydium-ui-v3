@@ -5,18 +5,19 @@ import { ApiV3PoolInfoConcentratedItem } from '@raydium-io/raydium-sdk-v2'
 import { useTranslation } from 'react-i18next'
 import TokenAvatar from '@/components/TokenAvatar'
 import CLMMTokenInputGroup, { InputSide } from '@/features/Clmm/components/TokenInputGroup'
-import { useClmmStore, useTokenAccountStore } from '@/store'
+import { useAppStore, useClmmStore, UserAssetBalance, useTokenAccountStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { debounce } from '@/utils/functionMethods'
 import toPercentString from '@/utils/numberish/toPercentString'
 import { formatCurrency, formatToRawLocaleStr } from '@/utils/numberish/formatter'
-import { getMintSymbol, wSolToSol, wsolToSolToken, isSolWSol } from '@/utils/token'
+import { getMintSymbol, wSolToSol, wsolToSolToken } from '@/utils/token'
 import useTokenPrice from '@/hooks/token/useTokenPrice'
 import { calRatio } from '@/features/Clmm/utils/math'
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import { trimTrailZero } from '@/utils/numberish/formatter'
 import { TickData } from './type'
+import { SOL_ASSET_ID, WSOL_PUBLICKEY } from '@/utils/constant'
 interface Props extends Required<TickData> {
   baseIn: boolean
   tempCreatedPool: ApiV3PoolInfoConcentratedItem
@@ -25,18 +26,43 @@ interface Props extends Required<TickData> {
 
 export default function TokenAmountPairInputs({ tempCreatedPool, baseIn, onConfirm, ...tickData }: Props) {
   const computePairAmount = useClmmStore((s) => s.computePairAmount)
-  const getTokenBalanceUiAmount = useTokenAccountStore((s) => s.getTokenBalanceUiAmount)
   const { t } = useTranslation()
   const [tokenAmount, setTokenAmount] = useState(['', ''])
+  const [tokenVolume, setTokenVolume] = useState([new Decimal(0), new Decimal(0)])
   const focusPoolARef = useRef(true)
   const computeRef = useRef(false)
   const computeDataRef = useRef<Awaited<ReturnType<typeof computePairAmount>> | undefined>(undefined)
 
-  const [mintA, mintB] = [tempCreatedPool![baseIn ? 'mintA' : 'mintB'], tempCreatedPool![baseIn ? 'mintB' : 'mintA']]
-  const { data: tokenPrices } = useTokenPrice({
-    mintList: [mintA.address, mintB.address]
-  })
+  const balances = useAppStore((s) => s.balances);
+  const [balance, setBalance] = useState<{
+    token1?: UserAssetBalance;
+    token2?: UserAssetBalance;
+  }>({})
+  useEffect(() => {
+    const checkSelectedAsset = (b: UserAssetBalance, address: string) => {
+      if (b.asset?.asset_id === SOL_ASSET_ID && address === WSOL_PUBLICKEY) return true
+      if (b?.address === address) return true;
+      if (b.asset?.asset_key === address) return true;
+      return false;
+    }
+    const bs: {
+      token1?: UserAssetBalance;
+      token2?: UserAssetBalance;
+    } = {}
+    Object.values(balances).forEach((b) => {
+      if (checkSelectedAsset(b, tempCreatedPool.mintA.address)) bs.token1 = b
+      if (checkSelectedAsset(b, tempCreatedPool.mintB.address)) bs.token2 = b
+    })
+    setBalance(bs);
 
+    const tokenA = baseIn ? bs.token1 : bs.token2;
+    const tokenB = baseIn ? bs.token2 : bs.token1;
+    const b1 = new Decimal(tokenAmount[0] || 0).mul(tokenA?.asset?.price_usd || 0)
+    const b2 = new Decimal(tokenAmount[1] || 0).mul(tokenB?.asset?.price_usd || 0)
+    setTokenVolume([b1, b2])
+  }, [balances, tokenAmount]);
+  
+  const [mintA, mintB] = [tempCreatedPool![baseIn ? 'mintA' : 'mintB'], tempCreatedPool![baseIn ? 'mintB' : 'mintA']]
   const [priceLower, priceUpper] = baseIn
     ? [tickData.priceLower, tickData.priceUpper]
     : [new Decimal(1).div(tickData.priceUpper).toString(), new Decimal(1).div(tickData.priceLower).toString()]
@@ -92,11 +118,14 @@ export default function TokenAmountPairInputs({ tempCreatedPool, baseIn, onConfi
     [tempCreatedPool.mintA.address]
   )
 
-  const balanceA = getTokenBalanceUiAmount({ mint: wSolToSol(mintA.address)!, decimals: mintA.decimals }).amount
-  const balanceB = getTokenBalanceUiAmount({ mint: wSolToSol(mintB.address)!, decimals: mintB.decimals }).amount
-
   let error = undefined
   function checkError() {
+    if (!balance.token1 || !balance.token2 || !balance.token1.asset || !balance.token2.asset) return undefined;
+    const b1 = new Decimal(balance.token1.total_amount)
+    const b2 = new Decimal(balance.token2.total_amount)
+    const balanceA = baseIn ? b1 : b2;
+    const balanceB = baseIn ? b2 : b1;
+  
     if (!disabledInput[0]) {
       if (!tokenAmount[0] || new Decimal(tokenAmount[0] || 0).isZero()) return { key: 'error.enter_token_amount' }
       if (new Decimal(tokenAmount[0]).gt(balanceA))
@@ -111,11 +140,7 @@ export default function TokenAmountPairInputs({ tempCreatedPool, baseIn, onConfi
   }
   error = checkError()
 
-  const [mintAVolume, mintBVolume] = [
-    new Decimal(tokenAmount[0] || 0).mul(tokenPrices[mintA.address]?.value || 0),
-    new Decimal(tokenAmount[1] || 0).mul(tokenPrices[mintB.address]?.value || 0)
-  ]
-  const totalVolume = mintAVolume.add(mintBVolume)
+  const totalVolume = tokenVolume[0].add(tokenVolume[1])
   const { ratioA, ratioB } = calRatio({
     price: baseIn ? tempCreatedPool.price : 1 / tempCreatedPool.price,
     amountA: tokenAmount[0],
@@ -127,6 +152,7 @@ export default function TokenAmountPairInputs({ tempCreatedPool, baseIn, onConfi
         pool={tempCreatedPool}
         baseIn={baseIn}
         tokenAmount={tokenAmount}
+        tokenBalance={balance}
         disableSelectToken
         onAmountChange={handleAmountChange}
         onFocusChange={handleFocusChange}

@@ -3,7 +3,7 @@ import { QuestionToolTip } from '@/components/QuestionToolTip'
 import TokenInput, { DEFAULT_SOL_RESERVER, InputActionRef } from '@/components/TokenInput'
 import { useEvent } from '@/hooks/useEvent'
 import { useHover } from '@/hooks/useHover'
-import { useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
+import { Token, useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import {
   Box,
@@ -217,7 +217,8 @@ export function SwapPanel({
   }, [])
 
   const handleSelectToken = useCallback(
-    (token: TokenInfo | ApiV3Token, side?: 'input' | 'output') => {
+    (t: Token | TokenInfo | ApiV3Token, side?: 'input' | 'output') => {
+      const token = 'info' in t ? t.info : t;
       if (side === 'input') {
         if (getMintPriority(token.address) > getMintPriority(outputMint)) {
           onDirectionNeedReverse?.()
@@ -301,12 +302,20 @@ export function SwapPanel({
     fetchTokenAccountAct({})
   })
 
-  const outputFilterFn = useEvent((token: TokenInfo) => {
-    if (isSolWSol(tokenInput?.address) && isSolWSol(token.address)) return false
+  const outputFilterFn = useEvent((token: TokenInfo | Token) => {
+    if ('programId' in token) {
+      if (isSolWSol(tokenInput?.address) && isSolWSol(token.address)) return false
+      return true
+    }
+    if (isSolWSol(tokenInput?.address) && isSolWSol(token.info.address)) return false
     return true
   })
-  const inputFilterFn = useEvent((token: TokenInfo) => {
-    if (isSolWSol(tokenOutput?.address) && isSolWSol(token.address)) return false
+  const inputFilterFn = useEvent((token: TokenInfo | Token) => {
+    if ('programId' in token) {
+      if (isSolWSol(tokenOutput?.address) && isSolWSol(token.address)) return false
+      return true
+    }
+    if (isSolWSol(tokenOutput?.address) && isSolWSol(token.info.address)) return false
     return true
   })
 
@@ -327,6 +336,7 @@ export function SwapPanel({
           onTokenChange={(token) => handleSelectToken(token, 'input')}
           defaultUnknownToken={unknownTokenA}
           actionRef={tokenAActionRef}
+          fromMixinFilter={true}
         />
         <SwapIcon onClick={handleChangeSide} />
         {/* output */}

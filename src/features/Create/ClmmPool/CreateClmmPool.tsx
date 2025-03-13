@@ -1,6 +1,6 @@
 import { Box, Flex, Grid, GridItem, HStack, Link, Text, useDisclosure } from '@chakra-ui/react'
 import { ApiClmmConfigInfo, ApiV3Token, solToWSol } from '@raydium-io/raydium-sdk-v2'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import shallow from 'zustand/shallow'
 
@@ -9,7 +9,7 @@ import { StepsRef } from '@/components/Steps'
 import SubPageNote from '@/components/SubPageNote'
 import PreviewDepositModal from '@/features/Clmm/components/PreviewDepositModal'
 import ChevronLeftIcon from '@/icons/misc/ChevronLeftIcon'
-import { CreatePoolBuildData, useAppStore, useClmmStore } from '@/store'
+import { CreatePoolBuildData, Token, useAppStore, useClmmStore } from '@/store'
 import { colors } from '@/theme/cssVariables/colors'
 import { genCSS2GridTemplateColumns, genCSS3GridTemplateColumns } from '@/theme/detailConfig'
 import { debounce, exhaustCall } from '@/utils/functionMethods'
@@ -25,27 +25,37 @@ import CreateSuccessModal from './components/CreateSuccessModal'
 import CreateSuccessWithLockModal from './components/CreateSuccessWithLockModal'
 import { useEvent } from '@/hooks/useEvent'
 import useBirdeyeTokenPrice from '@/hooks/token/useBirdeyeTokenPrice'
+import { SafeAsset } from '@mixin.dev/mixin-node-sdk'
+import { initComputerClient } from '@/api/computer'
+import { ComputerSystemCallRequest } from '@/types/computer'
+import { MixinMultipleTracesModal } from '@/components/Mixin/MixinMultipleTracesModal'
+import { toastSubject } from '@/hooks/toast/useGlobalToast'
 
 export default function CreateClmmPool() {
   const isMobile = useAppStore((s) => s.isMobile)
+  const getUserMix = useAppStore((s) => s.getUserMix)
   const { t } = useTranslation()
   const [createClmmPool, openPositionAct] = useClmmStore((s) => [s.createClmmPool, s.openPositionAct], shallow)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { isOpen: isLoading, onOpen: onLoading, onClose: offLoading } = useDisclosure()
   const { isOpen: isSuccessModalOpen, onOpen: onOpenSuccessModal, onClose: onCloseSuccessModal } = useDisclosure()
+  const { isOpen: isTraceModalOpen, onOpen: onOpenTraceModal, onClose: onCloseTraceModal } = useDisclosure()
   const [step, setStep] = useState(0)
   const [baseIn, setBaseIn] = useState(true)
   const [createPoolData, setCreatePoolData] = useState<CreatePoolBuildData | undefined>()
   const [isTxSending, setIsTxSending] = useState(false)
   const debounceSetBuildData = debounce((data: CreatePoolBuildData) => setCreatePoolData(data), 150)
+  const [assetMap, setAssetMap] = useState<Record<string, SafeAsset>>({})
+  const [requests, setRequests] = useState<ComputerSystemCallRequest[]>([])
 
   const { data: tokenPrices, isLoading: isPriceLoading } = useBirdeyeTokenPrice({
-    mintList: [createPoolData?.extInfo.mockPoolInfo.mintA.address, createPoolData?.extInfo.mockPoolInfo.mintB.address]
+    mintList: [createPoolData?.extInfo.mockPoolInfo.mintA.address, createPoolData?.extInfo.mockPoolInfo.mintB.address],
+    assetMap
   })
 
   const currentCreateInfo = useRef<{
-    token1?: ApiV3Token
-    token2?: ApiV3Token
+    token1?: Token
+    token2?: Token
     config?: ApiClmmConfigInfo
     price: string
     tickLower?: number
@@ -69,22 +79,40 @@ export default function CreateClmmPool() {
   }, [])
 
   const handleStep1Confirm = useCallback(
-    ({ token1, token2, ammConfig }: { token1: ApiV3Token; token2: ApiV3Token; ammConfig: ApiClmmConfigInfo }) => {
+    ({ token1, token2, ammConfig }: { token1: Token; token2: Token; ammConfig: ApiClmmConfigInfo }) => {
       onLoading()
-      currentCreateInfo.current.token1 = solToWSolToken(token1)
-      currentCreateInfo.current.token2 = solToWSolToken(token2)
+      token1 = {
+        ...token1,
+        info: {
+          ...token1.info,
+          ...solToWSolToken(token1.info)
+        }
+      }
+      token2 = {
+        ...token2,
+        info: {
+          ...token2.info,
+          ...solToWSolToken(token2.info)
+        }
+      }
+      currentCreateInfo.current.token1 = token1
+      currentCreateInfo.current.token2 = token2
       currentCreateInfo.current.config = ammConfig
       createClmmPool({
         config: ammConfig,
-        token1: solToWSolToken(token1),
-        token2: solToWSolToken(token2),
+        token1: token1,
+        token2: token2,
         price: '1',
         forerunCreate: true
       })
         .then(({ buildData }) => {
           if (!buildData) return
-          setBaseIn(solToWSol(token1.address).equals(solToWSol(buildData?.extInfo.mockPoolInfo?.mintA.address || '')))
+          setBaseIn(solToWSol(token1.info.address).equals(solToWSol(buildData?.extInfo.mockPoolInfo?.mintA.address || '')))
           setCreatePoolData(buildData)
+          const map: Record<string, SafeAsset> = {}
+          if (token1.balance.asset) map[token1.info.address] = token1.balance.asset
+          if (token2.balance.asset) map[token2.info.address] = token2.balance.asset
+          setAssetMap(map)
           stepsRef.current?.goToNext()
         })
         .finally(offLoading)
@@ -144,12 +172,14 @@ export default function CreateClmmPool() {
     exhaustCall(async () => {
       setIsTxSending(true)
       const { token1, token2, config, price } = currentCreateInfo.current
+      const nonce1 = await initComputerClient().getNonce(getUserMix())
       const { buildData } = await createClmmPool({
         config: config!,
         token1: token1!,
         token2: token2!,
         price,
-        forerunCreate: true
+        forerunCreate: true,
+        nonce: nonce1
       })
 
       if (!buildData) return
@@ -159,7 +189,14 @@ export default function CreateClmmPool() {
         new Decimal(currentCreateInfo.current.amount2!).mul(10 ** buildData.extInfo.mockPoolInfo.mintB.decimals).toFixed(0)
       ]
 
-      openPositionAct({
+      const nonce2 = await initComputerClient().getNonce(getUserMix())
+      const reqs = await openPositionAct({
+        nonce: nonce2,
+        poolNonce: nonce1,
+        tokens: {
+          token1: token1!,
+          token2: token2!,
+        },
         poolInfo: buildData.extInfo.mockPoolInfo,
         poolKeys: buildData.extInfo.address,
         tickLower: Math.min(currentCreateInfo.current.tickLower!, currentCreateInfo.current.tickUpper!),
@@ -173,8 +210,34 @@ export default function CreateClmmPool() {
         },
         onFinally: () => setIsTxSending(false)
       })
+      setRequests(reqs);
+      onOpenTraceModal();
     })
   )
+  useEffect(() => {
+    if (requests.length === 0) return;
+    const client = initComputerClient();
+    const timer = setInterval(async () => {
+      try {
+        const call = await client.fetchCall(requests[requests.length - 1].trace);
+        if (call.state === 'done') {
+          onOpenSuccessModal();
+          clearInterval(timer);
+        } else if (call.state === 'failed') {
+          setIsTxSending(false);
+          onClose();
+          toastSubject.next({
+            status: 'error',
+            description: 'transation failed'
+          });
+          clearInterval(timer);
+        }
+      } catch {}
+    }, 1000 * 5);
+    return () => clearInterval(timer);
+  }, [requests])
+
+
   const friendlySentence = [
     t('create_pool.clmm_create_pool_note_step1'),
     t('create_pool.clmm_create_pool_note_step2'),
@@ -275,8 +338,8 @@ export default function CreateClmmPool() {
                   priceRange: [currentCreateInfo.current.priceLower || '', currentCreateInfo.current.priceUpper || '']
                 }}
                 completed={step > 1}
-                token1={currentCreateInfo.current.token1!}
-                token2={currentCreateInfo.current.token2!}
+                token1={currentCreateInfo.current.token1!.info}
+                token2={currentCreateInfo.current.token2!.info}
                 tokenPrices={tokenPrices || {}}
                 isPriceLoading={isPriceLoading}
                 tempCreatedPool={createPoolData?.extInfo.mockPoolInfo}
@@ -323,6 +386,10 @@ export default function CreateClmmPool() {
       ) : (
         <CreateSuccessModal isOpen={isSuccessModalOpen} onClose={onCloseSuccessModal} />
       )}
+      {
+        requests.length > 0 && isTraceModalOpen &&
+        <MixinMultipleTracesModal isOpen={isTraceModalOpen} onClose={onCloseTraceModal} requests={requests}/>
+      }
     </>
   )
 }

@@ -30,6 +30,7 @@ import useFetchFarmByLpMint from '@/hooks/farm/useFetchFarmByLpMint'
 import { formatCurrency, formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import toPercentString from '@/utils/numberish/toPercentString'
 import { PoolListItemAprLine } from '@/features/Pools/components/PoolListItemAprLine'
+import { Token } from '@/store'
 
 export type IncreaseLiquidityPageQuery = {
   pool_id?: string
@@ -128,9 +129,10 @@ export default function Increase() {
     fetchTokenAccountAct({})
   })
 
-  const handleSelectToken = useCallback((token: TokenInfo | ApiV3Token, side: 'base' | 'quote') => {
+  const handleSelectToken = useCallback((t: Token | TokenInfo | ApiV3Token, side: 'base' | 'quote') => {
     setTokenPair((pair) => {
       const anotherSide = side === 'base' ? 'quote' : 'base'
+      const token = 'info' in t ? t.info : t;
 
       return {
         [anotherSide]: pair[anotherSide]?.address === token.address ? undefined : pair[anotherSide],

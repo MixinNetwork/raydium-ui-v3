@@ -106,7 +106,8 @@
     "migrate": "Migrate",
     "connect_wallet": "Connect Wallet",
     "connect": "Connect",
-    "create": "Create"
+    "create": "Create",
+    "register": "Register"
   },
   "badge": {
     "suggested": "Suggested",
@@ -858,5 +859,14 @@
   },
   "perpetuals": {
     "title": "Perpetuals"
+  },
+  "computer": {
+    "login": "Login",
+    "scan": "Scan with Mixin Messenger",
+    "registered": "You are already registered!",
+    "register_success": "Register Success!",
+    "deploying_assets": "Deploying assets...",
+    "deploy_success": "Asset Deployment Success!",
+    "traces": "{{index}}-th Transactions, {{total}} in total."
   }
 }

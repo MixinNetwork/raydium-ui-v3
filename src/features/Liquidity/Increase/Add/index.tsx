@@ -7,7 +7,7 @@ import Button from '@/components/Button'
 import IntervalCircle, { IntervalCircleHandler } from '@/components/IntervalCircle'
 import TokenInput from '@/components/TokenInput'
 import HorizontalSwitchSmallIcon from '@/icons/misc/HorizontalSwitchSmallIcon'
-import { useAppStore, useLiquidityStore, useTokenAccountStore } from '@/store'
+import { Token, useAppStore, useLiquidityStore, useTokenAccountStore } from '@/store'
 import { RpcAmmPool } from '@/hooks/pool/amm/useFetchRpcPoolData'
 import { RpcCpmmPool } from '@/hooks/pool/amm/useFetchCpmmRpcPoolData'
 import { colors } from '@/theme/cssVariables'
@@ -42,7 +42,7 @@ export default function AddLiquidity({
   rpcData?: RpcAmmPool | RpcCpmmPool
   mutate: () => void
   onRefresh: () => void
-  onSelectToken: (token: TokenInfo | ApiV3Token, side: 'base' | 'quote') => void
+  onSelectToken: (token: Token | TokenInfo | ApiV3Token, side: 'base' | 'quote') => void
 }) {
   const { t } = useTranslation()
   const [addLiquidityAct, computePairAmount, addCpmmLiquidityAct] = useLiquidityStore(

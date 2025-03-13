@@ -12,6 +12,7 @@ import { isClient } from '../utils/common'
 import '@/components/Toast/toast.css'
 import '@/components/LandingPage/components/tvl.css'
 import '@/components/LandingPage/liquidity.css'
+import '@/style/index.css'
 import 'react-day-picker/dist/style.css'
 import { GoogleAnalytics } from '@next/third-parties/google'
 

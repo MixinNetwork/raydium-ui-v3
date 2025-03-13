@@ -10,7 +10,7 @@ import { AprKey } from '@/hooks/pool/type'
 import useFetchPoolById from '@/hooks/pool/useFetchPoolById'
 import useTokenPrice from '@/hooks/token/useTokenPrice'
 import usePrevious from '@/hooks/usePrevious'
-import { useAppStore, useClmmStore, useTokenAccountStore } from '@/store'
+import { useAppStore, useClmmStore, UserAssetBalance, useTokenAccountStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { formatToMaxDigit, getFirstNonZeroDecimal, formatCurrency, formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import toPercentString from '@/utils/numberish/toPercentString'
@@ -149,6 +149,11 @@ export default function CreatePosition() {
     amountA: tokenAmount[0],
     amountB: tokenAmount[1]
   })
+
+  const [balance, setBalance] = useState<{
+    token1?: UserAssetBalance;
+    token2?: UserAssetBalance;
+  }>({})
 
   const aprData = useClmmApr({
     poolInfo: currentPool,
@@ -389,6 +394,8 @@ export default function CreatePosition() {
       new Decimal(tokenAmountRef.current[baseIn ? 1 : 0]).mul(10 ** (currentPool?.mintB.decimals ?? 0)).toFixed(0)
     ]
     openPositionAct({
+      // FIXME
+      nonce: { nonce_address: '', nonce_hash: ''},
       poolInfo: currentPool!,
       base: focusPoolARef.current ? 'MintA' : 'MintB',
       baseAmount: focusPoolARef.current ? mintAAmount : mintBAmount,
@@ -405,9 +412,10 @@ export default function CreatePosition() {
       },
       onCloseToast: () => setIsSending(false),
       onError: () => setIsSending(false)
-    }).then((props) => {
-      setNFTAddress(props?.buildData?.extInfo.nftMint.toString() || '')
     })
+    // .then((props) => {
+    //   setNFTAddress(props?.buildData?.extInfo.nftMint.toString() || '')
+    // })
   }
 
   const hasLockedLiquidity = currentPool && currentPool?.burnPercent > 0
@@ -640,6 +648,7 @@ export default function CreatePosition() {
             pool={currentPool}
             baseIn={baseIn}
             readonly={!currentPool || featureDisabled}
+            tokenBalance={balance}
             tokenAmount={tokenAmount}
             onFocusChange={handleFocusChange}
             onAmountChange={handleAmountChange}

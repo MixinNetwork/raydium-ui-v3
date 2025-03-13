@@ -9,6 +9,7 @@ import { NewRewardInfo } from '../../type'
 import RewardBody from './RewardBody'
 import RewardHeader from './RewardHeader'
 import useRewardSchema from '../useRewardSchema'
+import { Token } from '@/store'
 
 export type AddRewardItemProps = {
   isDefaultOpen?: boolean
@@ -16,7 +17,7 @@ export type AddRewardItemProps = {
   rewardInfo: NewRewardInfo
   onChange: (rewardInfo: NewRewardInfo) => void
   onDeleteReward(): void
-  tokenFilterFn: (token: ApiV3Token) => boolean
+  tokenFilterFn: (token: Token | ApiV3Token) => boolean
 }
 
 export default function AddRewardItem({ isDefaultOpen, index, rewardInfo, tokenFilterFn, onChange, onDeleteReward }: AddRewardItemProps) {
