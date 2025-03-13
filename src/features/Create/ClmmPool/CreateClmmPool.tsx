@@ -238,6 +238,9 @@ export default function CreateClmmPool() {
     }, 1000 * 5);
     return () => clearInterval(timer);
   }, [requests])
+  useEffect(() => {
+    if (!isOpen) setIsTxSending(false);
+  }, [isOpen])
 
 
   const friendlySentence = [
