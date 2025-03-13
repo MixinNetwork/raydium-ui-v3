@@ -70,14 +70,16 @@ export const buildInvoiceWithEntries = (recipient: string, feeEntry: InvoiceEntr
     return prev;
   }, {} as Record<string, InvoiceEntry>);
 
-  entries = Object.values(assetEntry) as  InvoiceEntry[]
+  entries = Object.values(assetEntry) as InvoiceEntry[];
+  if (xinAmount !== '0') feeEntry.amount = add(feeEntry.amount, xinAmount).toFixed(8, BigNumber.ROUND_CEIL);
+
+  feeEntry.index_references = entries.map((_, i) => i).slice(-2)
   entries.forEach((entry, index) => {
     entry.amount = BigNumber(entry.amount).toFixed(8, BigNumber.ROUND_CEIL);
+    if (index == entries.length - 1) entry.index_references = entries.map((_, i) => i).slice(0, -2);
     attachInvoiceEntry(invoice, entry)
   })
 
-  if (xinAmount !== '0') feeEntry.amount = add(feeEntry.amount, xinAmount).toFixed(8, BigNumber.ROUND_CEIL);
-  feeEntry.index_references = entries.map((_, i) => i);
   attachInvoiceEntry(invoice, feeEntry)
   console.log(invoice)
   return invoice

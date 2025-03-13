@@ -235,18 +235,20 @@ export const useAppStore = createStore<AppState>(
       const { keystore } = get();
       if (!keystore) return;
       const mc = MixinApi({ keystore });
-      const user = await mc.user.profile();
-      const mix = buildMixAddress({
-        version: 2,
-        xinMembers: [],
-        uuidMembers: [user.user_id],
-        threshold: 1
-      })
-      const account = await client.fetchUser(mix);
-      if (account) 
-        set({ user, account, connected: true, publicKey: new PublicKey(account.chain_address) });
-      else
-        set({ user });
+      try {
+        const user = await mc.user.profile();
+        const mix = buildMixAddress({
+          version: 2,
+          xinMembers: [],
+          uuidMembers: [user.user_id],
+          threshold: 1
+        })
+        const account = await client.fetchUser(mix);
+        if (account) 
+          set({ user, account, connected: true, publicKey: new PublicKey(account.chain_address) });
+        else
+          set({ user });
+      } catch {}
     },
     getUserMix: () => {
       const { user } = get();
