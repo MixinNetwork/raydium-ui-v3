@@ -332,7 +332,7 @@ export default function SelectPoolTokenAndFee({ completed, initState, show, isLo
           }}
         />
       </Flex>
-      <ConnectedButton mt="8" isDisabled={!!error || !currentConfig} isLoading={isLoading || isExistingLoading} onClick={handleConfirm}>
+      <ConnectedButton isDisabled={!!error || !currentConfig} isLoading={isLoading || isExistingLoading} onClick={handleConfirm}>
         {error ? `${t('common.select')} ${t(error)}` : t('button.continue')}
       </ConnectedButton>
       <ComputerWaiting type="deploy" title={t('computer.deploying_assets')} handleCompleted={handleCompleted} isOpen={deploying.isOpen} onClose={deploying.onClose} />

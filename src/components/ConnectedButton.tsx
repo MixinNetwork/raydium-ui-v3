@@ -57,7 +57,7 @@ export default forwardRef(function ConnectedButton({ children, onClick, isDisabl
   }
 
   return (
-    <Box>
+    <Box mt={8}>
       {
         !user 
           ? <MixinWallet />
