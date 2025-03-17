@@ -376,7 +376,7 @@ export const useClmmStore = createStore<ClmmState>(
             checkCreateATAOwner: params.checkCreateATAOwner,
           });
         if (_ownerTokenAccountA) ownerTokenAccountA = _ownerTokenAccountA;
-        txBuilder.addInstruction(_tokenAccountAInstruction || {});
+        if (mintAUseSOLBalance || bnAmountA.isZero()) txBuilder.addInstruction(_tokenAccountAInstruction || {});
     
         const { account: _ownerTokenAccountB, instructionParams: _tokenAccountBInstruction } =
           await raydium.account.getOrCreateTokenAccount({
@@ -394,7 +394,7 @@ export const useClmmStore = createStore<ClmmState>(
             checkCreateATAOwner: params.checkCreateATAOwner,
           });
         if (_ownerTokenAccountB) ownerTokenAccountB = _ownerTokenAccountB;
-        txBuilder.addInstruction(_tokenAccountBInstruction || {});
+        if (mintAUseSOLBalance || bnAmountB.isZero()) txBuilder.addInstruction(_tokenAccountBInstruction || {});
     
         if (!ownerTokenAccountA || !ownerTokenAccountB)
           throw new Error(`cannot found target token accounts tokenAccounts: ${poolInfo.mintA.address} ${ownerTokenAccountA?.toBase58()}, ${poolInfo.mintB.address} ${ownerTokenAccountB?.toBase58()}`);
