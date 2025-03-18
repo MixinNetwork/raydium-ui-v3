@@ -76,12 +76,15 @@ interface RpcItem {
 
 export type MixinClient = ReturnType<typeof MixinApi>;
 
-export interface UserAssetBalance {
+export interface UserAssetBalanceWithoutAsset {
   asset_id: string;
   total_amount: string;
   outputs: SafeUtxoOutput[];
-  asset?: SafeAsset;
   address?: string;
+}
+
+export interface UserAssetBalance extends UserAssetBalanceWithoutAsset{
+  asset: SafeAsset;
 }
 
 export interface Token {
@@ -294,14 +297,17 @@ export const useAppStore = createStore<AppState>(
           }
         }
         return prev
-      }, {} as Record<string, UserAssetBalance>)
+      }, {} as Record<string, UserAssetBalanceWithoutAsset>)
       const assets = await client.safe.fetchAssets(Object.keys(bm));
-      assets.forEach((asset) => {
-        bm[asset.asset_id].asset = asset;
-        if (asset.chain_id === SOL_ASSET_ID) 
-          bm[asset.asset_id].address = asset.asset_key;
-      });
-      set({ balances: bm })
+      const fbm = assets.reduce((prev, cur) => {
+        const b = bm[cur.asset_id]
+        const v: UserAssetBalance = { ...b, asset: cur }
+        if (cur.chain_id === SOL_ASSET_ID) 
+          v.address = cur.asset_key;
+        prev[cur.asset_id] = v;
+        return prev
+      }, {} as Record<string, UserAssetBalance>)
+      set({ balances: fbm })
     },
     getComputerInfo: async () => {
       const info = await client.fetchInfo();

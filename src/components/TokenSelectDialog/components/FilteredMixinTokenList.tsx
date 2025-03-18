@@ -1,18 +1,15 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useState, useRef, forwardRef, useImperativeHandle } from 'react'
-import { TokenInfo, WSOLMint } from '@raydium-io/raydium-sdk-v2'
+import { TokenInfo } from '@raydium-io/raydium-sdk-v2'
 import { useTranslation } from 'react-i18next'
 import { PublicKey } from '@solana/web3.js'
 import { useEvent } from '@/hooks/useEvent'
 import SearchIcon from '@/icons/misc/SearchIcon'
-import AddTokenIcon from '@/icons/misc/AddTokenIcon'
-import RemoveTokenIcon from '@/icons/misc/RemoveTokenIcon'
 import { Token, useAppStore, UserAssetBalance, useTokenAccountStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { sortItems } from '@/utils/sortItems'
-import { filterFilteredMixinTokenFn, filterTokenFn } from '@/utils/token'
+import { filterFilteredMixinTokenFn } from '@/utils/token'
 import { Box, Divider, Flex, Heading, Input, InputGroup, InputRightAddon, SimpleGrid, Text } from '@chakra-ui/react'
 import Decimal from 'decimal.js'
-import PopularTokenCell from './PopularTokenCell'
 import List, { ListPropController } from '@/components/List'
 import AddressChip from '@/components/AddressChip'
 import TokenAvatar from '@/components/TokenAvatar'
@@ -21,6 +18,7 @@ import useTokenInfo from '@/hooks/token/useTokenInfo'
 import { isValidPublicKey } from '@/utils/publicKey'
 import { formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import useTokenPrice, { TokenPrice } from '@/hooks/token/useTokenPrice'
+import { SOL_ASSET_ID } from '@/utils/constant'
 
 const perPage = 30
 
@@ -48,6 +46,7 @@ export default forwardRef<
     prev[cur.address] = cur;
     return prev;
   }, {} as Record<string, UserAssetBalance>));
+  const computerAssetAddressMap = useTokenStore((s) => s.computerAssetAddressMap)
   const tokenList = useTokenStore((s) => s.displayTokenList)
   const orgTokenMap = useTokenStore((s) => s.tokenMap)
   const setExtraTokenListAct = useTokenStore((s) => s.setExtraTokenListAct)
@@ -97,13 +96,35 @@ export default forwardRef<
       }
       return -1
     }
-    const sortedTokenList = sortItems(tokenList, {
+    console.log(mixinTokenAccountMap)
+    const list = Object.values(mixinTokenAccountMap).reduce((prev, balance) => {
+      if (
+        !balance.address || 
+        (balance.asset.chain_id !== SOL_ASSET_ID && !computerAssetAddressMap[balance.address])
+      ) return prev;
+      const uri = balance.asset.chain_id !== SOL_ASSET_ID 
+        ? computerAssetAddressMap[balance.address].uri 
+        : balance.asset.icon_url;
+      prev.push({
+        address: balance.address,
+        chainId: 101,
+        decimals: balance.asset.precision,
+        extensions: {},
+        logoURI: uri,
+        name: balance.asset.name,
+        programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        symbol: balance.asset.symbol,
+        tags: [],
+        priority: 90,
+      })
+      return prev;
+    }, [] as TokenInfo[])
+    const sortedTokenList = sortItems(list, {
       sortRules: [
         // { value: (i) => (i.address === SOLMint || i.address === RAYMint ? i.address : null) },
         { value: (i) => (i.tags.includes('unknown') ? null : i.symbol.length), compareFn }
       ]
     })
-    .filter((token) => mixinTokenAccountMap[token.address])
     .map(info => {
       const balance = mixinTokenAccountMap[info.address];
       return {
@@ -196,19 +217,6 @@ export default forwardRef<
           <SearchIcon />
         </InputRightAddon>
       </InputGroup>
-
-      <Box pb="8px">
-        <Heading fontSize="xs" fontWeight={500} color={colors.textTertiary} py="12px">
-          {t('common.popular_tokens')}
-        </Heading>
-
-        <SimpleGrid gridTemplateColumns={'repeat(auto-fill, minmax(80px, 1fr))'} gap={3}>
-          <PopularTokenCell token={USDC} onClick={(token) => onChooseToken(token)} disabled={usdcDisabled} />
-          <PopularTokenCell token={SOL} onClick={(token) => onChooseToken(token)} disabled={solDisabled} />
-          <PopularTokenCell token={RAY} onClick={(token) => onChooseToken(token)} disabled={rayDisabled} />
-          <PopularTokenCell token={USDT} onClick={(token) => onChooseToken(token)} disabled={usdtDisabled} />
-        </SimpleGrid>
-      </Box>
 
       <Divider my="10px" color={colors.backgroundTransparent12} />
 

@@ -24,6 +24,7 @@ export interface ComputerUserResponse {
 export interface ComputerAssetResponse {
   asset_id: string;
   address: string;
+  uri: string;
 }
 
 export interface ComputerNonceResponse {
