@@ -1,11 +1,22 @@
-import { parse } from "uuid";
+import { parse, stringify } from "uuid";
+import md5 from 'md5';
 import BigNumber from 'bignumber.js';
-import { OperationTypeAddUser, XIN_ASSET_ID } from "./constant";
+import { OperationTypeAddUser, SOL_ASSET_ID, XIN_ASSET_ID } from "./constant";
 import { attachInvoiceEntry, base64RawURLEncode, buildMixAddress, InvoiceEntry, newMixinInvoice } from "@mixin.dev/mixin-node-sdk";
 import { ComputerInfoResponse } from "@/types/computer";
 import { add } from "./number";
 
 export const computerEmptyExtra = Buffer.from('pzdhFF2zSCK9PCZBa1faGw');
+
+export const buildAssetId = (address: string) => {
+  const res = md5(SOL_ASSET_ID + address);
+  const bytes = Buffer.from(res, 'hex');
+
+  bytes[6] = (bytes[6] & 0x0f) | 0x30;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+  return stringify(bytes);
+}
 
 export const bigNumberToBytes = (x: BigNumber) => {
   const bytes = [];

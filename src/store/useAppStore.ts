@@ -76,6 +76,18 @@ interface RpcItem {
 
 export type MixinClient = ReturnType<typeof MixinApi>;
 
+export interface Asset {
+  asset_id: string;
+  chain_id: string;
+  asset_key: string;
+  precision: number;
+  name: string;
+  symbol: string;
+  price_usd: string;
+  change_usd: string;
+  icon_url: string;
+}
+
 export interface UserAssetBalanceWithoutAsset {
   asset_id: string;
   total_amount: string;
@@ -84,7 +96,7 @@ export interface UserAssetBalanceWithoutAsset {
 }
 
 export interface UserAssetBalance extends UserAssetBalanceWithoutAsset{
-  asset: SafeAsset;
+  asset: Asset;
 }
 
 export interface Token {
@@ -96,6 +108,7 @@ interface AppState {
   user?: UserResponse;
   keystore?: Keystore;
   balances: Record<string, UserAssetBalance>;
+  balanceAddressMap: Record<string, UserAssetBalance>;
   getMixinClient: () => MixinClient;
   setKeystore: (k :Keystore) => MixinClient;
   getMe: () => Promise<void>;
@@ -181,6 +194,7 @@ const client = initComputerClient();
 const appInitState = {
   keystore: loadKeystore(),
   balances: {},
+  balanceAddressMap: {},
   computer_assets: [],
 
   raydium: undefined,
@@ -307,7 +321,9 @@ export const useAppStore = createStore<AppState>(
         prev[cur.asset_id] = v;
         return prev
       }, {} as Record<string, UserAssetBalance>)
-      set({ balances: fbm })
+      const bs = Object.values(fbm).filter(b => b.address);
+      const am = Object.fromEntries([bs.map(b => b.address), bs]) as Record<string, UserAssetBalance>
+      set({ balances: fbm, balanceAddressMap: am })
     },
     getComputerInfo: async () => {
       const info = await client.fetchInfo();

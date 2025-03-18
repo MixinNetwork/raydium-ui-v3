@@ -239,13 +239,14 @@ function TokenInput(props: TokenInputProps) {
   })
 
   const handleSelectToken = useEvent((token: TokenInfo | Token) => {
-    const t = 'info' in token ? token.info : token
+    const fromMixn = 'info' in token
+    const t = fromMixn ? token.info : token
     const isFreeze = isFreezeToken(t)
     if (isFreeze) {
       setFreezeToken(t)
     }
     const shouldShowUnknownTokenConfirm = isUnknownToken(t)
-    if (shouldShowUnknownTokenConfirm) {
+    if (!fromMixn && shouldShowUnknownTokenConfirm) {
       setUnknownToken(t)
       onOpenUnknownTokenConfirm()
       return

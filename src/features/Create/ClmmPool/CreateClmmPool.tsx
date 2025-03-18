@@ -9,7 +9,7 @@ import { StepsRef } from '@/components/Steps'
 import SubPageNote from '@/components/SubPageNote'
 import PreviewDepositModal from '@/features/Clmm/components/PreviewDepositModal'
 import ChevronLeftIcon from '@/icons/misc/ChevronLeftIcon'
-import { CreatePoolBuildData, Token, useAppStore, useClmmStore } from '@/store'
+import { Asset, CreatePoolBuildData, Token, useAppStore, useClmmStore } from '@/store'
 import { colors } from '@/theme/cssVariables/colors'
 import { genCSS2GridTemplateColumns, genCSS3GridTemplateColumns } from '@/theme/detailConfig'
 import { debounce, exhaustCall } from '@/utils/functionMethods'
@@ -45,7 +45,7 @@ export default function CreateClmmPool() {
   const [createPoolData, setCreatePoolData] = useState<CreatePoolBuildData | undefined>()
   const [isTxSending, setIsTxSending] = useState(false)
   const debounceSetBuildData = debounce((data: CreatePoolBuildData) => setCreatePoolData(data), 150)
-  const [assetMap, setAssetMap] = useState<Record<string, SafeAsset>>({})
+  const [assetMap, setAssetMap] = useState<Record<string, Asset>>({})
   const [requests, setRequests] = useState<ComputerSystemCallRequest[]>([])
 
   const { data: tokenPrices, isLoading: isPriceLoading } = useBirdeyeTokenPrice({
@@ -109,7 +109,7 @@ export default function CreateClmmPool() {
           if (!buildData) return
           setBaseIn(solToWSol(token1.info.address).equals(solToWSol(buildData?.extInfo.mockPoolInfo?.mintA.address || '')))
           setCreatePoolData(buildData)
-          const map: Record<string, SafeAsset> = {}
+          const map: Record<string, Asset> = {}
           if (token1.balance.asset) map[token1.info.address] = token1.balance.asset
           if (token2.balance.asset) map[token2.info.address] = token2.balance.asset
           setAssetMap(map)

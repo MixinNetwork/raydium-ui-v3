@@ -1,4 +1,5 @@
 import axios from '@/api/axios'
+import { Asset } from '@/store'
 import { birdeyePriceUrl } from '@/utils/config/birdeyeAPI'
 import { MINUTE_MILLISECONDS } from '@/utils/date'
 import { isValidPublicKey } from '@/utils/publicKey'
@@ -34,7 +35,7 @@ export default function useBirdeyeTokenPrice(props: {
   mintList: (string | PublicKey | undefined)[]
   refreshInterval?: number
   timeout?: number
-  assetMap?: Record<string, SafeAsset>
+  assetMap?: Record<string, Asset>
 }) {
   const { mintList, refreshInterval = 2 * MINUTE_MILLISECONDS } = props || {}
 

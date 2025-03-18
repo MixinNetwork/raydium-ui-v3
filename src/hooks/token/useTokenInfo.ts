@@ -3,9 +3,8 @@ import { TokenInfo } from '@raydium-io/raydium-sdk-v2'
 import { PublicKey } from '@solana/web3.js'
 import { getTokenInfo } from './api'
 import { useTokenStore } from '@/store/useTokenStore'
-import { useAppStore } from '@/store/useAppStore'
+import { Asset, useAppStore } from '@/store/useAppStore'
 import { getMintSymbol } from '@/utils/token'
-import { SafeAsset } from '@mixin.dev/mixin-node-sdk'
 import { SOL_ASSET_ID } from '@/utils/constant'
 
 export default function useTokenInfo({
@@ -17,9 +16,10 @@ export default function useTokenInfo({
   mint?: string | PublicKey
   programId?: PublicKey | undefined
   skipTokenMap?: boolean
-  asset?: SafeAsset
+  asset?: Asset
 }) {
   const tokenMap = useTokenStore((s) => s.tokenMap)
+  const computerAssetMap= useTokenStore((s) => s.computerAssetAddressMap)
   const connection = useAppStore((s) => s.connection)
   const [loading, setLoading] = useState<boolean>(true)
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | undefined>(undefined)
@@ -42,7 +42,7 @@ export default function useTokenInfo({
               ...r,
               logoURI: asset.icon_url,
               symbol: asset.symbol,
-              name: `${asset.name} (Mixin)`
+              name: asset.name
             }
           setTokenInfo({
             ...r,

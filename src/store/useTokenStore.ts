@@ -1,12 +1,15 @@
 import { PublicKey } from '@solana/web3.js'
 import { MintLayout, RawMint } from '@solana/spl-token'
+import { NetworkClient } from '@mixin.dev/mixin-node-sdk'
 import { TokenInfo, JupTokenType, ApiV3Token } from '@raydium-io/raydium-sdk-v2'
 import { ComputerAssetResponse } from '@/types/computer'
 import createStore from './createStore'
-import { useAppStore } from './useAppStore'
+import { Token, useAppStore, UserAssetBalance } from './useAppStore'
+import { getTokenInfo } from '@/hooks/token/api'
 import { getStorageItem, setStorageItem } from '@/utils/localStorage'
 import logMessage from '@/utils/log'
 import { initComputerClient } from '@/api/computer'
+import { buildAssetId } from '@/utils/mixin'
 
 export const EXTRA_TOKEN_KEY = '_r_cus_t_'
 
@@ -33,6 +36,7 @@ export interface TokenStore {
   computerAssetIdMap: Record<string, ComputerAssetResponse>;
   computerAssetAddressMap: Record<string, ComputerAssetResponse>;
   getComputerAssets: () => Promise<void>;
+  getToken: (address: string) => Promise<Token | TokenInfo | undefined>;
 
   loadTokensAct: (forceUpdate?: boolean, jupTokenType?: JupTokenType) => void
   setDisplayTokenListAct: () => void
@@ -123,6 +127,63 @@ export const useTokenStore = createStore<TokenStore>(
           computerAssetIdMap: idMap
         });
       }
+    },
+    getToken: async (address: string) => {
+      const { balanceAddressMap, connection } = useAppStore.getState()
+      const { computerAssetAddressMap: am, tokenMap } = get();
+      const assetId = buildAssetId(address);
+      const b = balanceAddressMap[address]
+      const c = NetworkClient();
+
+      if (am[address]) {
+        const asset = b ? b.asset : (await c.fetchAsset(assetId));
+        const info = {
+          address: address,
+          chainId: 101,
+          decimals: asset.precision,
+          extensions: {},
+          logoURI: am[address].uri,
+          name: asset.name,
+          programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          symbol: asset.symbol,
+          tags: [],
+          priority: 90,
+        };
+        const balance = b ?? {
+          asset_id: assetId,
+          total_amount: "0",
+          outputs: [],
+          address,
+          asset
+        }
+        return {
+          info,
+          balance
+        }
+      }
+
+      const info = tokenMap.get(address) ?? (await getTokenInfo({ mint: address, connection }));
+      if (!info) return undefined;
+      if (b) {
+        return {
+          info: info,
+          balance: b,
+        }
+      }
+      const asset = await c.fetchAsset(assetId);
+      if (asset) {
+        return {
+          info: info,
+          balance: {
+            asset_id: assetId,
+            total_amount: "0",
+            outputs: [],
+            address,
+            asset
+          },
+        }
+      }
+      return tokenMap.get(address)
     },
 
     loadTokensAct: (forceUpdate?: boolean, jupTokenType?: JupTokenType) => {
