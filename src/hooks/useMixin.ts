@@ -1,19 +1,22 @@
 import { useEffect } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import shallow from 'zustand/shallow'
+import { useTokenStore } from '@/store'
 
 export default function useMixin() {
-  const [user, computer_assets, updateBalances] = useAppStore(
+  const [user, updateBalances] = useAppStore(
     (s) => 
-      [s.user, s.computer_assets, s.updateBalances], 
+      [s.user, s.updateBalances], 
       shallow
   )
+  const computerAssets = useTokenStore((s) => s.computerAssets)
+
   useEffect(() => {
     if (!user) return;
-    updateBalances(computer_assets);
+    updateBalances(computerAssets);
     const id = window.setInterval(() => {
-      updateBalances(computer_assets);
+      updateBalances(computerAssets);
     }, 60 * 1000)
     return () => window.clearInterval(id)
-  }, [user, computer_assets])
+  }, [user, computerAssets])
 }

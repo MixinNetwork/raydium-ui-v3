@@ -100,10 +100,8 @@ interface AppState {
   getUserMix: () => string;
 
   info?: ComputerInfoResponse;
-  computer_assets: ComputerAssetResponse[];
   account?: ComputerUserResponse;
   getComputerInfo: () => Promise<void>;
-  getComputerAssets: () => Promise<void>;
   getComputerAccount: () => Promise<void>;
   getComputerRecipient: () => string;
 
@@ -308,11 +306,6 @@ export const useAppStore = createStore<AppState>(
     getComputerInfo: async () => {
       const info = await client.fetchInfo();
       if (info) set({ info });
-    },
-    getComputerAssets: async () => {
-      const assets = await client.fetchAssets();
-      const { computer_assets: current } = get();
-      if (assets.length > current.length) set({ computer_assets: assets });
     },
     getComputerAccount: async () => {
       const { user, getUserMix } = get();

@@ -1,10 +1,13 @@
 import { PublicKey } from '@solana/web3.js'
 import { MintLayout, RawMint } from '@solana/spl-token'
 import { TokenInfo, JupTokenType, ApiV3Token } from '@raydium-io/raydium-sdk-v2'
+import { ComputerAssetResponse } from '@/types/computer'
 import createStore from './createStore'
 import { useAppStore } from './useAppStore'
 import { getStorageItem, setStorageItem } from '@/utils/localStorage'
 import logMessage from '@/utils/log'
+import { initComputerClient } from '@/api/computer'
+
 export const EXTRA_TOKEN_KEY = '_r_cus_t_'
 
 export interface TokenPrice {
@@ -26,6 +29,11 @@ export interface TokenStore {
   extraLoadedTokenList: TokenInfo[]
   whiteListMap: Set<string>
 
+  computerAssets: ComputerAssetResponse[];
+  computerAssetIdMap: Record<string, ComputerAssetResponse>;
+  computerAssetAddressMap: Record<string, ComputerAssetResponse>;
+  getComputerAssets: () => Promise<void>;
+
   loadTokensAct: (forceUpdate?: boolean, jupTokenType?: JupTokenType) => void
   setDisplayTokenListAct: () => void
   setExtraTokenListAct: (props: { token: TokenInfo; addToStorage?: boolean; update?: boolean }) => void
@@ -43,7 +51,11 @@ const initTokenSate = {
   tokenMap: new Map(),
   tokenPriceRecord: new Map(),
   mintGroup: { official: new Set<string>(), jup: new Set<string>() },
-  whiteListMap: new Set<string>()
+  whiteListMap: new Set<string>(),
+
+  computerAssets: [],
+  computerAssetIdMap: {},
+  computerAssetAddressMap: {},
 }
 
 export const cachedTokenInfo: Map<string, RawMint> = new Map()
@@ -89,9 +101,30 @@ export const getStorageToken = (mint: string): TokenInfo | undefined => {
   return cacheInfo
 }
 
+const client = initComputerClient();
 export const useTokenStore = createStore<TokenStore>(
   (set, get) => ({
     ...initTokenSate,
+    getComputerAssets: async () => {
+      const assets = await client.fetchAssets();
+      const { computerAssets: current } = get();
+      if (assets.length > current.length) {
+        const addressMap = assets.reduce((prev, cur) => {
+          prev[cur.address] = cur;
+          return prev;
+        }, {} as Record<string, ComputerAssetResponse>);
+        const idMap = assets.reduce((prev, cur) => {
+          prev[cur.asset_id] = cur;
+          return prev;
+        }, {} as Record<string, ComputerAssetResponse>);
+        set({ 
+          computerAssets: assets, 
+          computerAssetAddressMap: addressMap,
+          computerAssetIdMap: idMap
+        });
+      }
+    },
+
     loadTokensAct: (forceUpdate?: boolean, jupTokenType?: JupTokenType) => {
       const raydium = useAppStore.getState().raydium
       if (!raydium) return
@@ -207,6 +240,7 @@ export const useTokenStore = createStore<TokenStore>(
       logMessage('rpc: get token info')
       const accountData = await connection.getAccountInfo(new PublicKey(mint), { commitment: useAppStore.getState().commitment })
       if (!accountData || accountData.data.length !== MintLayout.span) return
+      // @ts-ignore
       const tokenInfo = MintLayout.decode(accountData.data)
       cachedTokenInfo.set(mint.toString(), tokenInfo)
       return tokenInfo

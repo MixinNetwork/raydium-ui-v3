@@ -52,7 +52,7 @@ export default function SelectPoolTokenAndFee({ completed, initState, show, isLo
 
   const clmmFeeConfigs = useClmmStore((s) => s.clmmFeeConfigs)
   const clmmFeeOptions = Object.values(clmmFeeConfigs)
-  const as = useAppStore((s) => s.computer_assets);
+  const as = useTokenStore((s) => s.computerAssets);
   const setExtraTokenListAct = useTokenStore((s) => s.setExtraTokenListAct)
   const [tokens, setTokens] = useState<{
     token1?: UserAssetBalance
