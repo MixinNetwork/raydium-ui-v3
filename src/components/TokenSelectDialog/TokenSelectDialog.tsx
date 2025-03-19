@@ -10,7 +10,7 @@ import TokenList, { TokenListHandles } from './components/TokenList'
 import TokenListUnknown from './components/TokenListUnknown'
 import MixinTokenList from './components/MixinTokenList'
 import FilteredMixinTokenList from './components/FilteredMixinTokenList'
-import { UserAssetBalance, Token } from '@/store'
+import { Token, UserAssetBalance } from '@/types/computer'
 
 export interface TokenSelectDialogProps {
   onSelectValue: ((token: TokenInfo | Token) => void) | ((token: UserAssetBalance) => void)

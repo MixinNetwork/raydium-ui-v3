@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { PublicKey } from '@solana/web3.js'
 import { useEvent } from '@/hooks/useEvent'
 import SearchIcon from '@/icons/misc/SearchIcon'
-import { Token, useAppStore, UserAssetBalance, useTokenAccountStore, useTokenStore } from '@/store'
+import { useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { sortItems } from '@/utils/sortItems'
 import { filterFilteredMixinTokenFn } from '@/utils/token'
@@ -19,6 +19,7 @@ import { isValidPublicKey } from '@/utils/publicKey'
 import { formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import useTokenPrice, { TokenPrice } from '@/hooks/token/useTokenPrice'
 import { SOL_ASSET_ID } from '@/utils/constant'
+import { Token, UserAssetBalance } from '@/types/computer'
 
 const perPage = 30
 

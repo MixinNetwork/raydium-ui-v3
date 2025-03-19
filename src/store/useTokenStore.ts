@@ -1,15 +1,12 @@
 import { PublicKey } from '@solana/web3.js'
 import { MintLayout, RawMint } from '@solana/spl-token'
-import { NetworkClient } from '@mixin.dev/mixin-node-sdk'
 import { TokenInfo, JupTokenType, ApiV3Token } from '@raydium-io/raydium-sdk-v2'
-import { ComputerAssetResponse } from '@/types/computer'
+import { ComputerAsset } from '@/types/computer'
 import createStore from './createStore'
-import { Token, useAppStore, UserAssetBalance } from './useAppStore'
-import { getTokenInfo } from '@/hooks/token/api'
+import { useAppStore } from './useAppStore'
 import { getStorageItem, setStorageItem } from '@/utils/localStorage'
 import logMessage from '@/utils/log'
 import { initComputerClient } from '@/api/computer'
-import { buildAssetId } from '@/utils/mixin'
 
 export const EXTRA_TOKEN_KEY = '_r_cus_t_'
 
@@ -32,11 +29,11 @@ export interface TokenStore {
   extraLoadedTokenList: TokenInfo[]
   whiteListMap: Set<string>
 
-  computerAssets: ComputerAssetResponse[];
-  computerAssetIdMap: Record<string, ComputerAssetResponse>;
-  computerAssetAddressMap: Record<string, ComputerAssetResponse>;
+  computerAssets: ComputerAsset[];
+  computerAssetIdMap: Record<string, ComputerAsset>;
+  computerAssetAddressMap: Record<string, ComputerAsset>;
   getComputerAssets: () => Promise<void>;
-  getToken: (address: string) => Promise<Token | TokenInfo | undefined>;
+  getToken: (address: string) => TokenInfo | undefined;
 
   loadTokensAct: (forceUpdate?: boolean, jupTokenType?: JupTokenType) => void
   setDisplayTokenListAct: () => void
@@ -110,80 +107,111 @@ export const useTokenStore = createStore<TokenStore>(
   (set, get) => ({
     ...initTokenSate,
     getComputerAssets: async () => {
+      const { getMixinClient } = useAppStore.getState()
       const assets = await client.fetchAssets();
       const { computerAssets: current } = get();
       if (assets.length > current.length) {
-        const addressMap = assets.reduce((prev, cur) => {
+        const ids = assets.map(a => a.asset_id);
+        const mp = assets.reduce((prev, cur, index) => {
+          prev[cur.asset_id]= index
+          return prev;
+        }, {} as Record<string, number>)
+
+        const client = getMixinClient();
+        const mas = await client.safe.fetchAssets(ids);
+        const fas = mas.map((a, i) => ({
+          ...assets[mp[a.asset_id]],
+          asset: a
+        }));
+
+        const addressMap = fas.reduce((prev, cur) => {
           prev[cur.address] = cur;
           return prev;
-        }, {} as Record<string, ComputerAssetResponse>);
-        const idMap = assets.reduce((prev, cur) => {
+        }, {} as Record<string, ComputerAsset>);
+        const idMap = fas.reduce((prev, cur) => {
           prev[cur.asset_id] = cur;
           return prev;
-        }, {} as Record<string, ComputerAssetResponse>);
+        }, {} as Record<string, ComputerAsset>);
         set({ 
-          computerAssets: assets, 
+          computerAssets: fas, 
           computerAssetAddressMap: addressMap,
           computerAssetIdMap: idMap
         });
       }
     },
-    getToken: async (address: string) => {
-      const { balanceAddressMap, connection } = useAppStore.getState()
+    getToken: (address: string) => {  
       const { computerAssetAddressMap: am, tokenMap } = get();
-      const assetId = buildAssetId(address);
-      const b = balanceAddressMap[address]
-      const c = NetworkClient();
-
-      if (am[address]) {
-        const asset = b ? b.asset : (await c.fetchAsset(assetId));
-        const info = {
+      const token = tokenMap.get(address)
+      if (token) return token;
+      const ca = am[address];
+      if (ca)
+        return {
           address: address,
           chainId: 101,
-          decimals: asset.precision,
+          decimals: ca.asset.precision,
           extensions: {},
-          logoURI: am[address].uri,
-          name: asset.name,
+          logoURI: ca.uri,
+          name: ca.asset.name,
           programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-          symbol: asset.symbol,
+          symbol: ca.asset.symbol,
           tags: [],
           priority: 90,
-        };
-        const balance = b ?? {
-          asset_id: assetId,
-          total_amount: "0",
-          outputs: [],
-          address,
-          asset
-        }
-        return {
-          info,
-          balance
-        }
-      }
+        } as TokenInfo
+      return undefined
+      // const { balanceAddressMap, connection } = useAppStore.getState()
+      // const assetId = buildAssetId(address);
+      // const b = balanceAddressMap[address]
+      // const c = NetworkClient();
 
-      const info = tokenMap.get(address) ?? (await getTokenInfo({ mint: address, connection }));
-      if (!info) return undefined;
-      if (b) {
-        return {
-          info: info,
-          balance: b,
-        }
-      }
-      const asset = await c.fetchAsset(assetId);
-      if (asset) {
-        return {
-          info: info,
-          balance: {
-            asset_id: assetId,
-            total_amount: "0",
-            outputs: [],
-            address,
-            asset
-          },
-        }
-      }
-      return tokenMap.get(address)
+      // if (am[address]) {
+      //   const asset = b ? b.asset : (await c.fetchAsset(assetId));
+      //   const info = {
+      //     address: address,
+      //     chainId: 101,
+      //     decimals: asset.precision,
+      //     extensions: {},
+      //     logoURI: am[address].uri,
+      //     name: asset.name,
+      //     programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      //     symbol: asset.symbol,
+      //     tags: [],
+      //     priority: 90,
+      //   };
+      //   const balance = b ?? {
+      //     asset_id: assetId,
+      //     total_amount: "0",
+      //     outputs: [],
+      //     address,
+      //     asset
+      //   }
+      //   return {
+      //     info,
+      //     balance
+      //   }
+      // }
+
+      // const info = tokenMap.get(address) ?? (await getTokenInfo({ mint: address, connection }));
+      // if (!info) return undefined;
+      // if (b) {
+      //   return {
+      //     info: info,
+      //     balance: b,
+      //   }
+      // }
+      // const asset = await c.fetchAsset(assetId);
+      // if (asset) {
+      //   return {
+      //     info: info,
+      //     balance: {
+      //       asset_id: assetId,
+      //       total_amount: "0",
+      //       outputs: [],
+      //       address,
+      //       asset
+      //     },
+      //   }
+      // }
+      // return tokenMap.get(address)
     },
 
     loadTokensAct: (forceUpdate?: boolean, jupTokenType?: JupTokenType) => {

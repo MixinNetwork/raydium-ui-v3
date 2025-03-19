@@ -1,3 +1,6 @@
+import { SafeUtxoOutput } from "@mixin.dev/mixin-node-sdk";
+import { TokenInfo } from "@raydium-io/raydium-sdk-v2";
+
 export interface ComputerInfoResponse {
   observer: string;
   payer: string;
@@ -27,6 +30,10 @@ export interface ComputerAssetResponse {
   uri: string;
 }
 
+export interface ComputerAsset extends ComputerAssetResponse {
+  asset: Asset;
+}
+
 export interface ComputerNonceResponse {
   nonce_address: string;
   nonce_hash: string;
@@ -47,4 +54,33 @@ export interface ComputerSystemCallResponse {
   nonce_account: string;
   raw:           string;
   state:         string;
+  hash:          string;
+}
+
+export interface Asset {
+  asset_id: string;
+  chain_id: string;
+  asset_key: string;
+  precision: number;
+  name: string;
+  symbol: string;
+  price_usd: string;
+  change_usd: string;
+  icon_url: string;
+}
+
+export interface UserAssetBalanceWithoutAsset {
+  asset_id: string;
+  total_amount: string;
+  outputs: SafeUtxoOutput[];
+  address?: string;
+}
+
+export interface UserAssetBalance extends UserAssetBalanceWithoutAsset{
+  asset: Asset;
+}
+
+export interface Token {
+  info: TokenInfo;
+  balance: UserAssetBalance;
 }

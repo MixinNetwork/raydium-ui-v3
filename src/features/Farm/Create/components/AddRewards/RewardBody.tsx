@@ -11,7 +11,7 @@ import { NewRewardInfo } from '../../type'
 import Decimal from 'decimal.js'
 import { useTranslation } from 'react-i18next'
 import { formatToRawLocaleStr } from '@/utils/numberish/formatter'
-import { Token } from '@/store'
+import { Token } from '@/types/computer'
 
 type RewardBodyProps = {
   rewardInfo: NewRewardInfo

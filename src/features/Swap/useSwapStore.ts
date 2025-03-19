@@ -1,23 +1,22 @@
-import { PublicKey, VersionedTransaction, Transaction, SignatureResult } from '@solana/web3.js'
-import { TxVersion, txToBase64, SOL_INFO } from '@raydium-io/raydium-sdk-v2'
-import { createStore, useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
+import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram, AddressLookupTableAccount } from '@solana/web3.js'
+import { TxVersion, SOL_INFO, LOOKUP_TABLE_CACHE } from '@raydium-io/raydium-sdk-v2'
+import { createStore, useAppStore, useTokenStore } from '@/store'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
-import { txStatusSubject, TOAST_DURATION } from '@/hooks/toast/useTxStatus'
+import { txStatusSubject } from '@/hooks/toast/useTxStatus'
 import { ApiSwapV1OutSuccess } from './type'
 import { isSolWSol } from '@/utils/token'
 import axios from '@/api/axios'
-import { getTxMeta } from './swapMeta'
-import { formatLocaleStr } from '@/utils/numberish/formatter'
-import { getMintSymbol } from '@/utils/token'
 import Decimal from 'decimal.js'
 import { TxCallbackProps } from '@/types/tx'
 import i18n from '@/i18n'
 import { fetchComputePrice } from '@/utils/tx/computeBudget'
 import { trimTailingZero } from '@/utils/numberish/formatter'
-import { getDefaultToastData, handleMultiTxToast } from '@/hooks/toast/multiToastUtil'
-import { handleMultiTxRetry } from '@/hooks/toast/retryTx'
-import { isSwapSlippageError } from '@/utils/tx/swapError'
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token'
+import { initComputerClient } from '@/api/computer'
+import { formatUnits, getInvoiceString, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
+import { buildComputerExtra, buildInvoiceWithEntries, buildSystemCallInvoiceExtra, computerEmptyExtra, handleInvoiceSchema } from '@/utils/mixin'
+import { OperationTypeSystemCall, SOL_ASSET_ID, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
+import { ComputerSystemCallRequest } from '@/types/computer'
 
 const getSwapComputePrice = async () => {
   const transactionFee = useAppStore.getState().getPriorityFee()
@@ -43,7 +42,7 @@ interface SwapStore {
   slippage: number
   swapTokenAct: (
     props: { swapResponse: ApiSwapV1OutSuccess; wrapSol?: boolean; unwrapSol?: boolean; onCloseToast?: () => void } & TxCallbackProps
-  ) => Promise<string | string[] | undefined>
+  ) => Promise<ComputerSystemCallRequest[]>
   unWrapSolAct: (props: { amount: string; onClose?: () => void; onSent?: () => void; onError?: () => void }) => Promise<string | undefined>
   wrapSolAct: (amount: string) => Promise<string | undefined>
 }
@@ -64,31 +63,27 @@ export const useSwapStore = createStore<SwapStore>(
     ...initSwapState,
 
     swapTokenAct: async ({ swapResponse, wrapSol, unwrapSol = false, onCloseToast, ...txProps }) => {
-      const { publicKey, raydium, txVersion, connection, signAllTransactions, urlConfigs } = useAppStore.getState()
-      if (!raydium || !connection) {
+      const { publicKey, raydium, txVersion, connection, urlConfigs, account, info, balanceAddressMap, getUserMix, getComputerRecipient } = useAppStore.getState()
+      const computer = getComputerRecipient()
+      if (!raydium || !connection || !info || !computer || !account) {
         console.error('no connection')
-        return
+        return [];
       }
-      if (!publicKey || !signAllTransactions) {
+      if (!publicKey) {
         console.error('no wallet')
-        return
+        return [];
       }
 
       try {
         const tokenMap = useTokenStore.getState().tokenMap
-        const [inputToken, outputToken] = [tokenMap.get(swapResponse.data.inputMint)!, tokenMap.get(swapResponse.data.outputMint)!]
+        const getToken = useTokenStore.getState().getToken
+        const [inputToken, outputToken] = [getToken(swapResponse.data.inputMint)!, getToken(swapResponse.data.outputMint)!]
         const [isInputSol, isOutputSol] = [wrapSol && isSolWSol(swapResponse.data.inputMint), isSolWSol(swapResponse.data.outputMint)]
 
-        const inputTokenAcc = await raydium.account.getCreatedTokenAccount({
-          programId: new PublicKey(inputToken.programId ?? TOKEN_PROGRAM_ID),
-          mint: new PublicKey(inputToken.address),
-          associatedOnly: false
-        })
-
-        if (!inputTokenAcc && !isInputSol) {
-          console.error('no input token acc')
-          return
-        }
+        const inputTokenAcc = raydium.account.getAssociatedTokenAccount(
+          new PublicKey(inputToken.address), 
+          new PublicKey(inputToken.programId ?? TOKEN_PROGRAM_ID)
+        )
 
         const outputTokenAcc = await raydium.account.getCreatedTokenAccount({
           programId: new PublicKey(outputToken.programId ?? TOKEN_PROGRAM_ID),
@@ -127,144 +122,86 @@ export const useSwapStore = createStore<SwapStore>(
             status: 'error'
           })
           onCloseToast && onCloseToast()
-          return
+          return [];
         }
 
+        console.log(swapResponse)
+        const amount = swapResponse.data.swapType === "BaseIn" 
+          ? swapResponse.data.inputAmount 
+          : swapResponse.data.outputAmount;
+        const token = swapResponse.data.swapType === "BaseIn" ? inputToken : outputToken;
+        const tokenAmount = formatUnits(amount, token.decimals).toString();
+        const balance = balanceAddressMap[token.address];
+        if (!balance) throw new Error('invalid input')
+
+        const rent = await raydium.connection.getMinimumBalanceForRentExemption(165)
+        const rents = new Decimal(rent).mul(swapResponse.data.routePlan.length * 2 - 1);
+        const solAmount = formatUnits(rents.toString(), SOL_DECIMAL).toString()
         const swapTransactions = data || []
-        const allTxBuf = swapTransactions.map((tx) => Buffer.from(tx.transaction, 'base64'))
-        const allTx = allTxBuf.map((txBuf) => (isV0Tx ? VersionedTransaction.deserialize(txBuf as any) : Transaction.from(txBuf)))
+        if (swapTransactions.length !== 1) throw new Error('invalid swap transaction'); //
+        const buf = Buffer.from(swapTransactions[0].transaction, 'base64')
+        let tx = VersionedTransaction.deserialize(buf as any);
+        const res = await Promise.all(tx.message.addressTableLookups.map(a => connection.getAddressLookupTable(a.accountKey)))
+        const alts = res.filter(r => r.value).map(r => r.value) as AddressLookupTableAccount[]
+        const swapIxs = TransactionMessage.decompile(tx.message, {
+          addressLookupTableAccounts: alts
+        }).instructions;
 
-        const signedTxs = await signAllTransactions(allTx)
-
-        console.log('simulate tx string:', signedTxs.map(txToBase64))
-
-        const txLength = signedTxs.length
-        const { toastId, handler } = getDefaultToastData({
-          txLength,
-          ...txProps
+        const client = initComputerClient();
+        const nonce = await client.getNonce(getUserMix())
+        const nonceIns = SystemProgram.nonceAdvance({
+          noncePubkey: new PublicKey(nonce.nonce_address),
+          authorizedPubkey: new PublicKey(info.payer)
         })
-
-        const swapMeta = getTxMeta({
-          action: 'swap',
-          values: {
-            amountA: formatLocaleStr(
-              new Decimal(swapResponse.data.inputAmount).div(10 ** (inputToken.decimals || 0)).toString(),
-              inputToken.decimals
-            )!,
-            symbolA: getMintSymbol({ mint: inputToken, transformSol: wrapSol }),
-            amountB: formatLocaleStr(
-              new Decimal(swapResponse.data.outputAmount).div(10 ** (outputToken.decimals || 0)).toString(),
-              outputToken.decimals
-            )!,
-            symbolB: getMintSymbol({ mint: outputToken, transformSol: unwrapSol })
-          }
-        })
-
-        const processedId: {
-          txId: string
-          status: 'success' | 'error' | 'sent'
-          signedTx: Transaction | VersionedTransaction
-        }[] = []
-
-        const getSubTxTitle = (idx: number) => {
-          return idx === 0
-            ? 'transaction_history.set_up'
-            : idx === processedId.length - 1 && processedId.length > 2
-            ? 'transaction_history.clean_up'
-            : 'transaction_history.name_swap'
-        }
-
-        let i = 0
-        const checkSendTx = async (): Promise<void> => {
-          if (!signedTxs[i]) return
-          const tx = signedTxs[i]
-          const txId = !isV0Tx
-            ? await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true, maxRetries: 0 })
-            : await connection.sendTransaction(tx as VersionedTransaction, { skipPreflight: true, maxRetries: 0 })
-          processedId.push({ txId, signedTx: tx, status: 'sent' })
-
-          if (signedTxs.length === 1) {
-            txStatusSubject.next({
-              txId,
-              ...swapMeta,
-              signedTx: tx,
-              onClose: onCloseToast,
-              isSwap: true,
-              mintInfo: [inputToken, outputToken],
-              ...txProps
-            })
-            return
-          }
-          let timeout = 0
-          let intervalId = 0
-          let intervalCount = 0
-
-          const cbk = (signatureResult: SignatureResult) => {
-            window.clearTimeout(timeout)
-            window.clearInterval(intervalId)
-            const targetTxIdx = processedId.findIndex((tx) => tx.txId === txId)
-            if (targetTxIdx > -1) processedId[targetTxIdx].status = signatureResult.err ? 'error' : 'success'
-            handleMultiTxRetry(processedId)
-            const isSlippageError = isSwapSlippageError(signatureResult)
-            handleMultiTxToast({
-              toastId,
-              processedId: processedId.map((p) => ({ ...p, status: p.status === 'sent' ? 'info' : p.status })),
-              txLength,
-              meta: {
-                ...swapMeta,
-                title: isSlippageError ? i18n.t('error.error.swap_slippage_error_title')! : swapMeta.title,
-                description: isSlippageError ? i18n.t('error.error.swap_slippage_error_desc')! : swapMeta.description
-              },
-              isSwap: true,
-              handler,
-              getSubTxTitle,
-              onCloseToast
-            })
-            if (!signatureResult.err) checkSendTx()
-          }
-
-          const subId = connection.onSignature(txId, cbk, 'processed')
-          connection.getSignatureStatuses([txId])
-
-          intervalId = window.setInterval(async () => {
-            const targetTxIdx = processedId.findIndex((tx) => tx.txId === txId)
-            if (intervalCount++ > TOAST_DURATION / 2000 || processedId[targetTxIdx].status !== 'sent') {
-              window.clearInterval(intervalId)
-              return
-            }
-            try {
-              const r = await connection.getTransaction(txId, { commitment: 'confirmed', maxSupportedTransactionVersion: TxVersion.V0 })
-              if (r) {
-                console.log('tx status from getTransaction:', txId)
-                cbk({ err: r.meta?.err || null })
-                window.clearInterval(intervalId)
-                useTokenAccountStore.getState().fetchTokenAccountAct({ commitment: useAppStore.getState().commitment })
-              }
-            } catch (e) {
-              console.error('getTransaction timeout:', e, txId)
-              window.clearInterval(intervalId)
-            }
-          }, 2000)
-
-          handleMultiTxRetry(processedId)
-          handleMultiTxToast({
-            toastId,
-            processedId: processedId.map((p) => ({ ...p, status: p.status === 'sent' ? 'info' : p.status })),
-            txLength,
-            meta: swapMeta,
-            isSwap: true,
-            handler,
-            getSubTxTitle,
-            onCloseToast
-          })
-
-          timeout = window.setTimeout(() => {
-            connection.removeSignatureListener(subId)
-          }, TOAST_DURATION)
-
-          i++
-        }
-        checkSendTx()
+        const messageV0 = new TransactionMessage({
+          payerKey: publicKey,
+          recentBlockhash: nonce.nonce_hash,
+          instructions: [nonceIns, ...swapIxs,], // add additional instructions here
+        }).compileToV0Message();
+        tx = new VersionedTransaction(messageV0);
+        const memo = Buffer.from(tx.serialize()).toString('base64');
+        const storage = await client.storageTx(memo);
+        const trace = uniqueConversationID(storage.hash, "system call");
+        const extra = buildComputerExtra(
+          info.members.app_id, 
+          OperationTypeSystemCall, 
+          buildSystemCallInvoiceExtra(account.id, trace, true, storage.hash)
+        )
+        const invoice = buildInvoiceWithEntries(
+          computer, 
+          {
+            trace_id: trace,
+            asset_id: XIN_ASSET_ID,
+            amount: info.params.operation.price,
+            extra: Buffer.from(extra),
+            index_references: [],
+            hash_references: []
+          }, 
+          [
+            {
+              trace_id: uniqueConversationID(uniqueConversationID(trace, SOL_ASSET_ID), "rent"),
+              asset_id: SOL_ASSET_ID,
+              amount: solAmount,
+              extra: computerEmptyExtra,
+              index_references: [],
+              hash_references: []
+            },
+            {
+              trace_id: uniqueConversationID(trace, balance.asset_id),
+              asset_id: balance.asset_id,
+              amount: tokenAmount,
+              extra: computerEmptyExtra,
+              index_references: [],
+              hash_references: []
+            },
+          ]
+        )
+         console.log(invoice)
+         const req = {
+           trace: trace,
+           value: handleInvoiceSchema(getInvoiceString(invoice)),
+         }
+         return [req]
       } catch (e: any) {
         txProps.onError?.()
         if (e.message !== 'tx failed')
@@ -272,7 +209,7 @@ export const useSwapStore = createStore<SwapStore>(
       } finally {
         txProps.onFinally?.()
       }
-      return ''
+      return [];
     },
 
     unWrapSolAct: async ({ amount, onSent, onError, ...txProps }): Promise<string | undefined> => {

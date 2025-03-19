@@ -10,7 +10,7 @@ import { AprKey } from '@/hooks/pool/type'
 import useFetchPoolById from '@/hooks/pool/useFetchPoolById'
 import useTokenPrice from '@/hooks/token/useTokenPrice'
 import usePrevious from '@/hooks/usePrevious'
-import { useAppStore, useClmmStore, UserAssetBalance, useTokenAccountStore } from '@/store'
+import { useAppStore, useClmmStore, useTokenAccountStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { formatToMaxDigit, getFirstNonZeroDecimal, formatCurrency, formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import toPercentString from '@/utils/numberish/toPercentString'
@@ -45,6 +45,7 @@ import { useEvent } from '@/hooks/useEvent'
 import { SlippageAdjuster } from '@/components/SlippageAdjuster'
 import useBirdeyeTokenPrice from '@/hooks/token/useBirdeyeTokenPrice'
 import useFetchRpcClmmInfo from '@/hooks/pool/clmm/useFetchRpcClmmInfo'
+import { UserAssetBalance } from '@/types/computer'
 
 type FormatParams = Parameters<typeof formatToMaxDigit>[0]
 

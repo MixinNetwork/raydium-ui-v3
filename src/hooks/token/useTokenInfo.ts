@@ -3,9 +3,10 @@ import { TokenInfo } from '@raydium-io/raydium-sdk-v2'
 import { PublicKey } from '@solana/web3.js'
 import { getTokenInfo } from './api'
 import { useTokenStore } from '@/store/useTokenStore'
-import { Asset, useAppStore } from '@/store/useAppStore'
+import { useAppStore } from '@/store/useAppStore'
 import { getMintSymbol } from '@/utils/token'
 import { SOL_ASSET_ID } from '@/utils/constant'
+import { Asset } from '@/types/computer'
 
 export default function useTokenInfo({
   mint,

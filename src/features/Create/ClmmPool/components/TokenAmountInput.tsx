@@ -1,23 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, HStack, Text, VStack } from '@chakra-ui/react'
 import { ApiV3PoolInfoConcentratedItem } from '@raydium-io/raydium-sdk-v2'
 
 import { useTranslation } from 'react-i18next'
 import TokenAvatar from '@/components/TokenAvatar'
 import CLMMTokenInputGroup, { InputSide } from '@/features/Clmm/components/TokenInputGroup'
-import { useAppStore, useClmmStore, UserAssetBalance, useTokenAccountStore } from '@/store'
+import { useAppStore, useClmmStore, } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { debounce } from '@/utils/functionMethods'
 import toPercentString from '@/utils/numberish/toPercentString'
 import { formatCurrency, formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import { getMintSymbol, wSolToSol, wsolToSolToken } from '@/utils/token'
-import useTokenPrice from '@/hooks/token/useTokenPrice'
 import { calRatio } from '@/features/Clmm/utils/math'
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import { trimTrailZero } from '@/utils/numberish/formatter'
 import { TickData } from './type'
 import { SOL_ASSET_ID, WSOL_PUBLICKEY } from '@/utils/constant'
+import { UserAssetBalance } from '@/types/computer'
+
 interface Props extends Required<TickData> {
   baseIn: boolean
   tempCreatedPool: ApiV3PoolInfoConcentratedItem

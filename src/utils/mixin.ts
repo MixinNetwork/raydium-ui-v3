@@ -92,6 +92,5 @@ export const buildInvoiceWithEntries = (recipient: string, feeEntry: InvoiceEntr
   })
 
   attachInvoiceEntry(invoice, feeEntry)
-  console.log(invoice)
   return invoice
 }

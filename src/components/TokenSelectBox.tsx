@@ -6,7 +6,7 @@ import { ReactNode, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import TokenAvatar from './TokenAvatar'
 import TokenSelectDialog from './TokenSelectDialog'
-import { Token } from '@/store'
+import { Token } from '@/types/computer'
 
 interface Props {
   /** for flex box */

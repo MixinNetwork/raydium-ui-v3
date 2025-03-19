@@ -19,7 +19,7 @@ import useTokenPrice from '@/hooks/token/useTokenPrice'
 import { useEvent } from '@/hooks/useEvent'
 import BalanceWalletIcon from '@/icons/misc/BalanceWalletIcon'
 import ChevronDownIcon from '@/icons/misc/ChevronDownIcon'
-import { Token, useAppStore, UserAssetBalance, useTokenAccountStore, useTokenStore } from '@/store'
+import { useAppStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { trimTrailZero, formatCurrency, detectedSeparator } from '@/utils/numberish/formatter'
 
@@ -31,6 +31,7 @@ import TokenUnknownAddDialog from './TokenSelectDialog/components/TokenUnknownAd
 import TokenFreezeDialog from './TokenSelectDialog/components/TokenFreezeDialog'
 import { TokenListHandles } from './TokenSelectDialog/components/TokenList'
 import useResponsive from '@/hooks/useResponsive'
+import { UserAssetBalance, Token } from '@/types/computer'
 
 export const DEFAULT_SOL_RESERVER = 0.01
 export interface InputActionRef {
@@ -143,7 +144,9 @@ function TokenInput(props: TokenInputProps) {
     fromMixinFilter = false,
   } = props
   const { isMobile } = useResponsive()
+  const balanceAddressMap = useAppStore((s) => s.balanceAddressMap)
   const setExtraTokenListAct = useTokenStore((s) => s.setExtraTokenListAct)
+  const computerAssetMap = useTokenStore((s) => s.computerAssetAddressMap)
   const whiteListMap = useTokenStore((s) => s.whiteListMap)
   const { colorMode } = useColorMode()
   const isLight = colorMode === 'light'
@@ -178,8 +181,8 @@ function TokenInput(props: TokenInputProps) {
   const price = tokenPrice[token?.address || '']?.value
 
   // balance
-  const balanceAmount = balance && balance.asset 
-    ? new Decimal(balance.total_amount)
+  const balanceAmount = token && balanceAddressMap[token.address] 
+    ? new Decimal(balanceAddressMap[token.address].total_amount) 
     : new Decimal(0)
   const totalPrice = new Decimal(value || 0).mul(balance?.asset?.price_usd || 0)
   const balanceMaxString = hideBalance
@@ -228,10 +231,11 @@ function TokenInput(props: TokenInputProps) {
   })
 
   const isUnknownToken = useEvent((token: TokenInfo) => {
+    const isComputer = computerAssetMap[token.address];
     const isUnknown = !token.type || token.type === 'unknown' || token.tags.includes('unknown')
     const isTrusted = isUnknown && !!tokenMap.get(token.address)?.userAdded
     const isUserAddedTokenEnable = displayTokenSettings.userAdded
-    return isUnknown && (!isTrusted || !isUserAddedTokenEnable)
+    return isUnknown && (!isTrusted || !isUserAddedTokenEnable) && !isComputer;
   })
 
   const isFreezeToken = useEvent((token: TokenInfo | ApiV3Token) => {

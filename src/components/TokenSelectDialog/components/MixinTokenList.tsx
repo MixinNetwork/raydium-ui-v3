@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { PublicKey } from '@solana/web3.js'
 import { useEvent } from '@/hooks/useEvent'
 import SearchIcon from '@/icons/misc/SearchIcon'
-import { useAppStore, UserAssetBalance } from '@/store'
+import { useAppStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { sortItems } from '@/utils/sortItems'
 import { filterMixinTokenFn } from '@/utils/token'
@@ -11,9 +11,9 @@ import { Box, Divider, Flex, Heading, Input, InputGroup, InputRightAddon, Text }
 import List, { ListPropController } from '@/components/List'
 import AddressChip from '@/components/AddressChip'
 import TokenAvatar from '@/components/TokenAvatar'
-import Button from '@/components/Button'
 import { formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import { mul } from '@/utils/number'
+import { UserAssetBalance } from '@/types/computer'
 
 const perPage = 30
 

@@ -7,7 +7,7 @@ import Button from '@/components/Button'
 import IntervalCircle, { IntervalCircleHandler } from '@/components/IntervalCircle'
 import TokenInput from '@/components/TokenInput'
 import HorizontalSwitchSmallIcon from '@/icons/misc/HorizontalSwitchSmallIcon'
-import { Token, useAppStore, useLiquidityStore, useTokenAccountStore } from '@/store'
+import { useAppStore, useLiquidityStore, useTokenAccountStore } from '@/store'
 import { RpcAmmPool } from '@/hooks/pool/amm/useFetchRpcPoolData'
 import { RpcCpmmPool } from '@/hooks/pool/amm/useFetchCpmmRpcPoolData'
 import { colors } from '@/theme/cssVariables'
@@ -24,6 +24,7 @@ import { useEvent } from '@/hooks/useEvent'
 import { throttle } from '@/utils/functionMethods'
 import useRefreshEpochInfo from '@/hooks/app/useRefreshEpochInfo'
 import BN from 'bn.js'
+import { Token } from '@/types/computer'
 
 const InputWidth = ['100%']
 export default function AddLiquidity({

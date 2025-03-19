@@ -2,7 +2,7 @@ import Button from '@/components/Button'
 import DatePickerModal from '@/components/FarmDatePickerModal'
 import TokenInput from '@/components/TokenInput'
 import { useEvent } from '@/hooks/useEvent'
-import { Token, useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
+import { useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { parseDateInfo } from '@/utils/date'
 import {
@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next'
 import useAddNewRewardSchema from '../schema/useAddNewRewardSchema'
 import { EditReward } from '../util'
 import { formatToRawLocaleStr } from '@/utils/numberish/formatter'
+import { Token } from '@/types/computer'
 
 /**
  * used in [FarmingRewardItemm](../FarmingRewardItem.tsx)

@@ -30,7 +30,7 @@ import useFetchFarmByLpMint from '@/hooks/farm/useFetchFarmByLpMint'
 import { formatCurrency, formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import toPercentString from '@/utils/numberish/toPercentString'
 import { PoolListItemAprLine } from '@/features/Pools/components/PoolListItemAprLine'
-import { Token } from '@/store'
+import { Token } from '@/types/computer'
 
 export type IncreaseLiquidityPageQuery = {
   pool_id?: string

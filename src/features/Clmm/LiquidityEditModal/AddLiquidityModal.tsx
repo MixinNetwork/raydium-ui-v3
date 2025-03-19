@@ -23,7 +23,7 @@ import TokenAvatarPair from '@/components/TokenAvatarPair'
 import { debounce } from '@/utils/functionMethods'
 import { formatCurrency } from '@/utils/numberish/formatter'
 import useClmmBalance, { ClmmPosition } from '@/hooks/portfolio/clmm/useClmmBalance'
-import { useAppStore, useClmmStore, UserAssetBalance, useTokenAccountStore } from '@/store'
+import { useAppStore, useClmmStore, useTokenAccountStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import Button from '@/components/Button'
 import { wSolToSol } from '@/utils/token'
@@ -41,6 +41,7 @@ import { useDisclosure } from '@/hooks/useDelayDisclosure'
 import { calRatio } from '../utils/math'
 import Decimal from 'decimal.js'
 import BN from 'bn.js'
+import { UserAssetBalance } from '@/types/computer'
 
 export default function AddLiquidityModal({
   isOpen,

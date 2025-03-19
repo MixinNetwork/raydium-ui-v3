@@ -23,7 +23,7 @@ import TokenInput from '@/components/TokenInput'
 import { useEvent } from '@/hooks/useEvent'
 import { colors } from '@/theme/cssVariables'
 import { DAY_SECONDS, parseDateInfo, WEEK_SECONDS } from '@/utils/date'
-import { Token, useAppStore, useTokenAccountStore } from '@/store'
+import { useAppStore, useTokenAccountStore } from '@/store'
 import { EditReward } from '../util'
 import useAddNewRewardSchema from '../schema/useAddNewRewardSchema'
 import dayjs from 'dayjs'
@@ -31,6 +31,7 @@ import { ApiV3Token } from '@raydium-io/raydium-sdk-v2'
 import DatePickerModal from '@/components/FarmDatePickerModal'
 import { formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import { wSolToSol, wsolToSolToken } from '@/utils/token'
+import { Token } from '@/types/computer'
 
 /**
  * used in [FarmingRewardItem](../FarmingRewardItem.tsx)

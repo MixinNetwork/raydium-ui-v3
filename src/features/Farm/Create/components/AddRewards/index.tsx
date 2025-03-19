@@ -1,6 +1,6 @@
 import Button from '@/components/Button'
 import PlusCircleIcon from '@/icons/misc/PlusCircleIcon'
-import { Token, useAppStore } from '@/store'
+import { useAppStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { Flex, HStack, Text } from '@chakra-ui/react'
 import { ApiV3Token } from '@raydium-io/raydium-sdk-v2'
@@ -8,6 +8,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NewRewardInfo } from '../../type'
 import AddRewardItem from './Reward'
+import { Token } from '@/types/computer'
 
 export default function RewardAddItem(props: {
   maxRewardCount: number

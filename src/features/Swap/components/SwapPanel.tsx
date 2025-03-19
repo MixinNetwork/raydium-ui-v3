@@ -3,7 +3,7 @@ import { QuestionToolTip } from '@/components/QuestionToolTip'
 import TokenInput, { DEFAULT_SOL_RESERVER, InputActionRef } from '@/components/TokenInput'
 import { useEvent } from '@/hooks/useEvent'
 import { useHover } from '@/hooks/useHover'
-import { Token, useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
+import { useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import {
   Box,
@@ -15,7 +15,7 @@ import {
   Text,
   useDisclosure,
   CircularProgress,
-  Tooltip as ChakraTip
+  Tooltip as ChakraTip,
 } from '@chakra-ui/react'
 import { ApiV3Token, RAYMint, SOL_INFO, TokenInfo, TransferFeeDataBaseType } from '@raydium-io/raydium-sdk-v2'
 import { PublicKey } from '@solana/web3.js'
@@ -44,6 +44,10 @@ import useTokenInfo from '@/hooks/token/useTokenInfo'
 import { debounce } from '@/utils/functionMethods'
 import QuestionCircleIcon from '@/icons/misc/QuestionCircleIcon'
 import Tooltip from '@/components/Tooltip'
+import { ComputerSystemCallRequest, Token } from '@/types/computer'
+import { MixinMultipleTracesModal } from '@/components/Mixin/MixinMultipleTracesModal'
+import { initComputerClient } from '@/api/computer'
+import { toastSubject } from '@/hooks/toast/useGlobalToast'
 
 export function SwapPanel({
   onInputMintChange,
@@ -60,9 +64,12 @@ export function SwapPanel({
   const [defaultInput, defaultOutput] = [urlInputMint || cacheInput, urlOutputMint || cacheOutput]
 
   const { t, i18n } = useTranslation()
+  const balanceAddressMap = useAppStore((s) => s.balanceAddressMap)
   const { swap: swapDisabled } = useAppStore().featureDisabled
+  const explorerUrl = useAppStore((s) => s.explorerUrl)
   const swapTokenAct = useSwapStore((s) => s.swapTokenAct)
   const unWrapSolAct = useSwapStore((s) => s.unWrapSolAct)
+  const getToken = useTokenStore((s) => s.getToken)
   const tokenMap = useTokenStore((s) => s.tokenMap)
   const [getTokenBalanceUiAmount, fetchTokenAccountAct, refreshTokenAccTime] = useTokenAccountStore(
     (s) => [s.getTokenBalanceUiAmount, s.fetchTokenAccountAct, s.refreshTokenAccTime],
@@ -78,7 +85,7 @@ export function SwapPanel({
   const [swapType, setSwapType] = useState<'BaseIn' | 'BaseOut'>('BaseIn')
 
   const [outputMint, setOutputMint] = useState<string>(RAYMint.toBase58())
-  const [tokenInput, tokenOutput] = [tokenMap.get(inputMint), tokenMap.get(outputMint)]
+  const [tokenInput, tokenOutput] = [getToken(inputMint), getToken(outputMint)]
   const [cacheLoaded, setCacheLoaded] = useState(false)
   const isTokenLoaded = tokenMap.size > 0
   const { tokenInfo: unknownTokenA } = useTokenInfo({
@@ -132,6 +139,8 @@ export function SwapPanel({
   const [amountIn, setAmountIn] = useState<string>('')
   const [needPriceUpdatedAlert, setNeedPriceUpdatedAlert] = useState(false)
   const [hasValidAmountOut, setHasValidAmountOut] = useState(false)
+  const [requests, setRequests] = useState<ComputerSystemCallRequest[]>([])  
+  const { isOpen: isTraceModalOpen, onOpen: onOpenTraceModal, onClose: onCloseTraceModal } = useDisclosure()
 
   const handleUnwrap = useEvent(() => {
     onUnWrapping()
@@ -153,6 +162,7 @@ export function SwapPanel({
     swapType,
     refreshInterval: isSending || isHightRiskOpen ? 3 * 60 * 1000 : 1000 * 30
   })
+  console.log(error)
 
   const onPriceUpdatedConfirm = useEvent(() => {
     setNeedPriceUpdatedAlert(false)
@@ -251,7 +261,9 @@ export function SwapPanel({
     })
   })
 
-  const balanceAmount = getTokenBalanceUiAmount({ mint: inputMint, decimals: tokenInput?.decimals }).amount
+  const balanceAmount = balanceAddressMap[inputMint] 
+      ? new Decimal(balanceAddressMap[inputMint].total_amount) 
+      : new Decimal(0)
   const balanceNotEnough = balanceAmount.lt(inputAmount || 0) ? t('error.balance_not_enough') : undefined
   const isSolFeeNotEnough = inputAmount && isSolWSol(inputMint || '') && balanceAmount.sub(inputAmount || 0).lt(DEFAULT_SOL_RESERVER)
   const swapError = (error && i18n.exists(`swap.error_${error}`) ? t(`swap.error_${error}`) : error) || balanceNotEnough
@@ -262,11 +274,11 @@ export function SwapPanel({
     handleClickSwap()
   })
 
-  const handleClickSwap = () => {
+  const handleClickSwap = async () => {
     if (!response) return
     sendingResult.current = response as ApiSwapV1OutSuccess
     onSending()
-    swapTokenAct({
+    const reqs = await swapTokenAct({
       swapResponse: response as ApiSwapV1OutSuccess,
       wrapSol: tokenInput?.address === PublicKey.default.toString(),
       unwrapSol: tokenOutput?.address === PublicKey.default.toString(),
@@ -281,7 +293,37 @@ export function SwapPanel({
         mutate()
       }
     })
+    setRequests(reqs)
+    onOpenTraceModal();
   }
+  useEffect(() => {
+    if (requests.length === 0) return;
+    const client = initComputerClient();
+    const timer = setInterval(async () => {
+      try {
+        const call = await client.fetchCall(requests[requests.length - 1].trace);
+        if (call.state === 'done') {
+          toastSubject.next({
+            status: 'error',
+            title: `${t('transaction.title')} ${t('transaction.confirmed')}`,
+            description: call.hash
+          });
+          offSending();
+          clearInterval(timer);
+        } else if (call.state === 'failed') {
+          toastSubject.next({
+            status: 'error',
+            description: 'transation failed'
+          });
+          offSending();
+          clearInterval(timer);
+        }
+      } catch {
+        // console.log(err)
+      }
+    }, 1000 * 5);
+    return () => clearInterval(timer);
+  }, [requests])
 
   const getCtrSx = (type: 'BaseIn' | 'BaseOut') => {
     if (!new Decimal(amountIn || 0).isZero() && swapType === type) {
@@ -473,6 +515,10 @@ export function SwapPanel({
         onConfirm={handleHighRiskConfirm}
         percent={computeResult?.priceImpactPct ?? 0}
       />
+      {
+        requests.length > 0 && isTraceModalOpen &&
+        <MixinMultipleTracesModal isOpen={isTraceModalOpen} onClose={onCloseTraceModal} requests={requests}/>
+      }
     </>
   )
 }

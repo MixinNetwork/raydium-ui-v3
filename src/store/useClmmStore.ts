@@ -9,7 +9,6 @@ import {
   TickUtils,
   PoolUtils,
   ReturnTypeGetPriceAndTick,
-  ApiV3Token,
   SetRewardsParams,
   ClmmKeys,
   ApiV3PoolInfoConcentratedItem,
@@ -29,7 +28,7 @@ import {
 } from '@raydium-io/raydium-sdk-v2'
 import { PublicKey, SystemProgram } from '@solana/web3.js'
 import createStore from '@/store/createStore'
-import { useAppStore, useTokenAccountStore, useLiquidityStore, Token } from '@/store'
+import { useAppStore, useTokenAccountStore, useLiquidityStore } from '@/store'
 import { isSolWSol } from '@/utils/token'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
 import { txStatusSubject } from '@/hooks/toast/useTxStatus'
@@ -46,9 +45,9 @@ import { ClmmLockInfo } from '@/hooks/portfolio/clmm/useClmmBalance'
 
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
-import { ComputerNonceResponse, ComputerSystemCallRequest } from '@/types/computer'
+import { ComputerNonceResponse, ComputerSystemCallRequest, Token } from '@/types/computer'
 import { buildInvoiceWithEntries, buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema, computerEmptyExtra } from '@/utils/mixin'
-import { attachInvoiceEntry, formatUnits, getInvoiceString, InvoiceEntry, newMixinInvoice, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
+import { attachInvoiceEntry, formatUnits, getInvoiceString, newMixinInvoice, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
 import { CREATE_POOL_RENT_SIZES, OPEN_POSITION_RENT_SIZES, OperationTypeSystemCall, SOL_ASSET_ID, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { initComputerClient } from '@/api/computer'
 

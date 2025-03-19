@@ -23,7 +23,7 @@ import { isValidUrl } from '@/utils/url'
 import { setStorageItem, getStorageItem } from '@/utils/localStorage'
 import { retry, isProdEnv } from '@/utils/common'
 import { compare } from 'compare-versions'
-import { ComputerAssetResponse, ComputerInfoResponse, ComputerUserResponse } from '@/types/computer';
+import { ComputerAssetResponse, ComputerInfoResponse, ComputerUserResponse, UserAssetBalance, UserAssetBalanceWithoutAsset } from '@/types/computer';
 import { add } from '@/utils/number';
 import { SOL_ASSET_ID } from '@/utils/constant';
 
@@ -75,34 +75,6 @@ interface RpcItem {
 }
 
 export type MixinClient = ReturnType<typeof MixinApi>;
-
-export interface Asset {
-  asset_id: string;
-  chain_id: string;
-  asset_key: string;
-  precision: number;
-  name: string;
-  symbol: string;
-  price_usd: string;
-  change_usd: string;
-  icon_url: string;
-}
-
-export interface UserAssetBalanceWithoutAsset {
-  asset_id: string;
-  total_amount: string;
-  outputs: SafeUtxoOutput[];
-  address?: string;
-}
-
-export interface UserAssetBalance extends UserAssetBalanceWithoutAsset{
-  asset: Asset;
-}
-
-export interface Token {
-  info: TokenInfo;
-  balance: UserAssetBalance;
-}
 
 interface AppState {
   user?: UserResponse;
@@ -195,7 +167,6 @@ const appInitState = {
   keystore: loadKeystore(),
   balances: {},
   balanceAddressMap: {},
-  computer_assets: [],
 
   raydium: undefined,
   initialing: false,
@@ -322,7 +293,7 @@ export const useAppStore = createStore<AppState>(
         return prev
       }, {} as Record<string, UserAssetBalance>)
       const bs = Object.values(fbm).filter(b => b.address);
-      const am = Object.fromEntries([bs.map(b => b.address), bs]) as Record<string, UserAssetBalance>
+      const am = Object.fromEntries(bs.map(b => [b.address, b])) as Record<string, UserAssetBalance>
       set({ balances: fbm, balanceAddressMap: am })
     },
     getComputerInfo: async () => {

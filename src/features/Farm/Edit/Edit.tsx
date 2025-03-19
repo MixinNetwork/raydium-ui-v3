@@ -21,7 +21,7 @@ import { refreshCreatedFarm } from '@/hooks/portfolio/farm/useCreatedFarmInfo'
 import { refreshPoolCache } from '@/hooks/pool/useFetchPoolList'
 import { useEvent } from '@/hooks/useEvent'
 import PlusCircleIcon from '@/icons/misc/PlusCircleIcon'
-import { Token, useAppStore, useClmmStore, useFarmStore } from '@/store'
+import { useAppStore, useClmmStore, useFarmStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 
 import SubPageNote from '@/components/SubPageNote'
@@ -38,6 +38,7 @@ import useFetchRpcClmmInfo from '@/hooks/pool/clmm/useFetchRpcClmmInfo'
 import useFetchFarmInfoByRpc from '@/hooks/farm/useFetchFarmInfoByRpc'
 import { TxCallbackProps } from '@/types/tx'
 import { BN } from 'bn.js'
+import { Token } from '@/types/computer'
 
 interface QueryParams {
   farmId?: string

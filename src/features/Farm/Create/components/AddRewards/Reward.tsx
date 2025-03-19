@@ -9,7 +9,7 @@ import { NewRewardInfo } from '../../type'
 import RewardBody from './RewardBody'
 import RewardHeader from './RewardHeader'
 import useRewardSchema from '../useRewardSchema'
-import { Token } from '@/store'
+import { Token } from '@/types/computer'
 
 export type AddRewardItemProps = {
   isDefaultOpen?: boolean

@@ -4,7 +4,7 @@ import { TokenInfo } from '@raydium-io/raydium-sdk-v2'
 
 import TokenAvatar from '@/components/TokenAvatar'
 import { useEvent } from '@/hooks/useEvent'
-import { Token, useAppStore } from '@/store'
+import { useAppStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { DAY_SECONDS } from '@/utils/date'
 import { formatCurrency } from '@/utils/numberish/formatter'
@@ -16,6 +16,7 @@ import { wSolToSolString } from '@/utils/token'
 import { TxCallbackProps } from '@/types/tx'
 import { useTranslation } from 'react-i18next'
 import Decimal from 'decimal.js'
+import { Token } from '@/types/computer'
 
 export default function ExistFarmingRewardItem({
   reward,
