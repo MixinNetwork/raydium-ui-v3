@@ -9,7 +9,7 @@ import TokenListSetting from './components/TokenListSetting'
 import TokenList, { TokenListHandles } from './components/TokenList'
 import TokenListUnknown from './components/TokenListUnknown'
 import MixinTokenList from './components/MixinTokenList'
-import FilteredMixinTokenList from './components/FilteredMixinTokenList'
+import ComputerTokenList from './components/ComputerTokenList'
 import { Token, UserAssetBalance } from '@/types/computer'
 
 export interface TokenSelectDialogProps {
@@ -18,7 +18,7 @@ export interface TokenSelectDialogProps {
   filterFn?: ((token: TokenInfo | Token) => boolean) | ((token: UserAssetBalance) => boolean) 
   onClose: () => void
   fromMixin?: boolean;
-  fromMixinFilter?: boolean;
+  fromComputer?: boolean;
 }
 
 enum PageType {
@@ -26,15 +26,15 @@ enum PageType {
   TokenListSetting,
   TokenListUnknown,
   MixinTokenList,
-  FilteredMixinTokenList,
+  ComputerTokenList,
 }
 
 export default forwardRef<TokenListHandles, TokenSelectDialogProps>(function TokenSelectDialog(
-  { onSelectValue, isOpen, filterFn, onClose, fromMixin, fromMixinFilter },
+  { onSelectValue, isOpen, filterFn, onClose, fromMixin, fromComputer },
   ref
 ) {
   const { t } = useTranslation()
-  const init = fromMixin ? PageType.MixinTokenList : fromMixinFilter ? PageType.FilteredMixinTokenList : PageType.TokenList
+  const init = fromMixin ? PageType.MixinTokenList : fromComputer ? PageType.ComputerTokenList : PageType.TokenList
   const [currentPage, setCurrentPage] = useState<PageType>(init)
 
   const renderModalContent = useCallback(() => {
@@ -47,8 +47,8 @@ export default forwardRef<TokenListHandles, TokenSelectDialogProps>(function Tok
         return <TokenListUnknownContent />
       case PageType.MixinTokenList:
         return <MixinTokenListContent />
-      case PageType.FilteredMixinTokenList:
-        return <FilteredMixinTokenListContent />
+      case PageType.ComputerTokenList:
+        return <ComputerTokenListContent />
       default:
         return null
     }
@@ -82,7 +82,7 @@ export default forwardRef<TokenListHandles, TokenSelectDialogProps>(function Tok
     )
   }
 
-  const FilteredMixinTokenListContent = () => {
+  const ComputerTokenListContent = () => {
     const onSelect = onSelectValue as (token: Token | TokenInfo) => void
     const filter = filterFn as (token: Token | TokenInfo) => boolean
     return (
@@ -95,9 +95,9 @@ export default forwardRef<TokenListHandles, TokenSelectDialogProps>(function Tok
         <ModalCloseButton />
         <ModalBody display={'flex'} flexDirection={'column'} overflowX="hidden">
           <Box height={['auto', '60vh']} flex={['1', 'unset']}>
-            <FilteredMixinTokenList
+            <ComputerTokenList
               ref={ref}
-              onOpenTokenList={() => setCurrentPage(PageType.FilteredMixinTokenList)}
+              onOpenTokenList={() => setCurrentPage(PageType.ComputerTokenList)}
               onChooseToken={(token: Token | TokenInfo) => {
                 onSelect(token)
               }}

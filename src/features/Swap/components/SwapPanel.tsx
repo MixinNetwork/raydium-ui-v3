@@ -378,7 +378,7 @@ export function SwapPanel({
           onTokenChange={(token) => handleSelectToken(token, 'input')}
           defaultUnknownToken={unknownTokenA}
           actionRef={tokenAActionRef}
-          fromMixinFilter={true}
+          fromComputer={true}
         />
         <SwapIcon onClick={handleChangeSide} />
         {/* output */}
