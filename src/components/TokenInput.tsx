@@ -40,6 +40,8 @@ export interface InputActionRef {
 export interface TokenInputProps extends Pick<TokenSelectDialogProps, 'filterFn'> {
   fromMixin?: boolean
   fromComputer?: boolean
+  mergeComputer?: boolean
+
   id?: string
   name?: string
   /**
@@ -142,6 +144,7 @@ function TokenInput(props: TokenInputProps) {
     actionRef,
     fromMixin = false,
     fromComputer = false,
+    mergeComputer = false,
   } = props
   const { isMobile } = useResponsive()
   const balanceAddressMap = useAppStore((s) => s.balanceAddressMap)
@@ -444,7 +447,7 @@ function TokenInput(props: TokenInputProps) {
           <Text textAlign="right">~{formatCurrency(totalPrice, { symbol: '$', maximumDecimalTrailingZeroes: 5 })}</Text>
         </GridItem>
       </Grid>
-      <TokenSelectDialog fromMixin={fromMixin} fromComputer={fromComputer} isOpen={isOpen} onClose={onClose} onSelectValue={handleSelectToken} filterFn={filterFn} ref={tokenListRef} />
+      <TokenSelectDialog fromMixin={fromMixin} fromComputer={fromComputer} mergeComputer={mergeComputer} isOpen={isOpen} onClose={onClose} onSelectValue={handleSelectToken} filterFn={filterFn} ref={tokenListRef} />
       {unknownToken !== undefined && (
         <TokenUnknownAddDialog
           isOpen={isOpenUnknownTokenConfirm}

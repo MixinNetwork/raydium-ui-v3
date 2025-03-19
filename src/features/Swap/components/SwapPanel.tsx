@@ -394,6 +394,7 @@ export function SwapPanel({
           onTokenChange={(token) => handleSelectToken(token, 'output')}
           defaultUnknownToken={unknownTokenB}
           actionRef={tokenBActionRef}
+          mergeComputer={true}
         />
       </Flex>
       {/* swap info */}
