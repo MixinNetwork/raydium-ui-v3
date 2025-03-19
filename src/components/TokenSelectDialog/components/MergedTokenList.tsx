@@ -7,8 +7,8 @@ import SearchIcon from '@/icons/misc/SearchIcon'
 import { useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { sortItems } from '@/utils/sortItems'
-import { filterFilteredMixinTokenFn, filterTokenFn } from '@/utils/token'
-import { Box, Divider, Flex, Heading, Input, InputGroup, InputRightAddon, SimpleGrid, Text } from '@chakra-ui/react'
+import { filterTokenFn } from '@/utils/token'
+import { Box, Divider, Flex, Heading, Input, InputGroup, InputRightAddon, Text } from '@chakra-ui/react'
 import Decimal from 'decimal.js'
 import List, { ListPropController } from '@/components/List'
 import AddressChip from '@/components/AddressChip'
@@ -18,10 +18,7 @@ import useTokenInfo from '@/hooks/token/useTokenInfo'
 import { isValidPublicKey } from '@/utils/publicKey'
 import { formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import useTokenPrice, { TokenPrice } from '@/hooks/token/useTokenPrice'
-import { SOL_ASSET_ID } from '@/utils/constant'
-import { Token, UserAssetBalance } from '@/types/computer'
-import AddTokenIcon from '@/icons/misc/AddTokenIcon'
-import RemoveTokenIcon from '@/icons/misc/RemoveTokenIcon'
+import { Token } from '@/types/computer'
 
 const perPage = 30
 
@@ -44,6 +41,7 @@ export default forwardRef<
   }
 >(function TokenList({ onOpenTokenList, isDialogOpen: isOpen, onChooseToken, filterFn }, ref) {
   const { t } = useTranslation()
+  const balanceAddressMap = useAppStore((s) => s.balanceAddressMap)
   const computerAssetAddressMap = useTokenStore((s) => s.computerAssetAddressMap)
   const tokenList = useTokenStore((s) => s.displayTokenList)
   const orgTokenMap = useTokenStore((s) => s.tokenMap)
@@ -105,7 +103,7 @@ export default forwardRef<
         name: a.asset.name,
         programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
         symbol: a.asset.symbol,
-        tags: [],
+        tags: ["mixin"],
         priority: 90,
       }
       })
@@ -149,7 +147,10 @@ export default forwardRef<
   })
 
   const getBalance = useCallback(
-    (token: TokenInfo) => getTokenBalanceUiAmount({ mint: token.address, decimals: token.decimals }).text,
+    (token: TokenInfo) => {
+      if (balanceAddressMap[token.address]) return balanceAddressMap[token.address].total_amount
+      return getTokenBalanceUiAmount({ mint: token.address, decimals: token.decimals }).text
+    },
     [getTokenBalanceUiAmount]
   )
 
@@ -175,8 +176,6 @@ export default forwardRef<
         token={token}
         balance={() => getBalance(token)}
         onClick={(token) => onChooseToken(token)}
-        onAddUnknownTokenClick={(token) => handleAddUnknownTokenClick(token)}
-        onRemoveUnknownTokenClick={() => handleRemoveUnknownTokenClick(token)}
       />
     ),
     [getBalance]
@@ -296,19 +295,12 @@ function TokenRowItem({
   token,
   balance,
   onClick,
-  onAddUnknownTokenClick,
-  onRemoveUnknownTokenClick
 }: {
   token: TokenInfo
   balance: () => string
   onClick: (token: TokenInfo) => void
-  onAddUnknownTokenClick: (token: TokenInfo) => void
-  onRemoveUnknownTokenClick: (token: TokenInfo) => void
 }) {
   const { t } = useTranslation()
-  const isUnknown = !token.type || token.type === 'unknown' || token.tags.includes('unknown')
-  const isTrusted = isUnknown && !!useTokenStore.getState().tokenMap.get(token.address)?.userAdded
-
   return (
     <Flex
       justifyContent={'space-between'}
@@ -331,24 +323,6 @@ function TokenRowItem({
               <Text color={colors.textSecondary} mt="0.5">
                 {token.symbol}
               </Text>
-              {isUnknown ? (
-                <Box
-                  className="addRemoveCtrlContent"
-                  display="none"
-                  alignSelf="center"
-                  alignItems="center"
-                  cursor="pointer"
-                  onClick={(ev) => {
-                    ev.stopPropagation()
-                    !isTrusted ? onAddUnknownTokenClick?.(token) : onRemoveUnknownTokenClick?.(token)
-                  }}
-                >
-                  {!isTrusted ? <AddTokenIcon /> : <RemoveTokenIcon />}
-                  <Text fontSize={'sm'} lineHeight="16px" pl={1} fontWeight="medium" color={colors.textSeptenary}>
-                    {!isTrusted ? t('common.add_token') : t('common.remove_token')}
-                  </Text>
-                </Box>
-              ) : null}
             </Box>
             <Text color={colors.textTertiary} isTruncated fontSize="xs">
               {token.name}

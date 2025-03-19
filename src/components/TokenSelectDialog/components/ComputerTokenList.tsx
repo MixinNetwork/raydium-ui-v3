@@ -1,7 +1,6 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import { TokenInfo } from '@raydium-io/raydium-sdk-v2'
 import { useTranslation } from 'react-i18next'
-import { PublicKey } from '@solana/web3.js'
 import { useEvent } from '@/hooks/useEvent'
 import SearchIcon from '@/icons/misc/SearchIcon'
 import { useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
@@ -22,11 +21,6 @@ import { SOL_ASSET_ID } from '@/utils/constant'
 import { Token, UserAssetBalance } from '@/types/computer'
 
 const perPage = 30
-
-const USDCMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
-const SOLMint = PublicKey.default.toString()
-const RAYMint = '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R'
-const USDTMint = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'
 
 export interface TokenListHandles {
   resetSearch: () => void
@@ -51,9 +45,7 @@ export default forwardRef<
   const tokenList = useTokenStore((s) => s.displayTokenList)
   const orgTokenMap = useTokenStore((s) => s.tokenMap)
   const setExtraTokenListAct = useTokenStore((s) => s.setExtraTokenListAct)
-  const unsetExtraTokenListAct = useTokenStore((s) => s.unsetExtraTokenListAct)
-  const [getTokenBalanceUiAmount, tokenAccountMap, tokenAccounts] = useTokenAccountStore((s) => [
-    s.getTokenBalanceUiAmount,
+  const [tokenAccountMap, tokenAccounts] = useTokenAccountStore((s) => [
     s.tokenAccountMap,
     s.tokenAccounts
   ])
@@ -165,26 +157,9 @@ export default forwardRef<
     setSearch(e.currentTarget.value)
   })
 
-  const getBalance = useCallback(
-    (token: TokenInfo) => getTokenBalanceUiAmount({ mint: token.address, decimals: token.decimals }).text,
-    [getTokenBalanceUiAmount]
-  )
-
   const handleAddUnknownTokenClick = useCallback((token: TokenInfo) => {
     setExtraTokenListAct({ token: { ...token, userAdded: true }, addToStorage: true, update: true })
   }, [])
-  const handleRemoveUnknownTokenClick = useCallback((token: TokenInfo) => {
-    unsetExtraTokenListAct(token)
-  }, [])
-
-  const USDC = useMemo(() => orgTokenMap.get(USDCMint), [orgTokenMap])
-  const SOL = useMemo(() => orgTokenMap.get(SOLMint), [orgTokenMap])
-  const RAY = useMemo(() => orgTokenMap.get(RAYMint), [orgTokenMap])
-  const USDT = useMemo(() => orgTokenMap.get(USDTMint), [orgTokenMap])
-
-  const [usdcDisabled, solDisabled, rayDisabled, usdtDisabled] = filterFn
-    ? [!USDC || !filterFn(USDC), !SOL || !filterFn(SOL), !RAY || !filterFn(RAY), !USDT || !filterFn(USDT)]
-    : [false, false, false, false]
 
   const renderTokenItem = useCallback(
     (token: Token) => (

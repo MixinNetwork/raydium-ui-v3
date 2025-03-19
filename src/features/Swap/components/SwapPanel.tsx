@@ -162,7 +162,6 @@ export function SwapPanel({
     swapType,
     refreshInterval: isSending || isHightRiskOpen ? 3 * 60 * 1000 : 1000 * 30
   })
-  console.log(error)
 
   const onPriceUpdatedConfirm = useEvent(() => {
     setNeedPriceUpdatedAlert(false)
