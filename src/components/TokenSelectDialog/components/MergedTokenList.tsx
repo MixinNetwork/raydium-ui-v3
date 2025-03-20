@@ -95,17 +95,17 @@ export default forwardRef<
     const computerTokenList = Object.values(computerAssetAddressMap)
       .map(a => {
         return {
-        address: a.address,
-        chainId: 101,
-        decimals: a.asset.precision,
-        extensions: {},
-        logoURI: a.uri,
-        name: a.asset.name,
-        programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-        symbol: a.asset.symbol,
-        tags: ["mixin"],
-        priority: 90,
-      }
+          address: a.address,
+          chainId: 101,
+          decimals: a.asset.precision,
+          extensions: {},
+          logoURI: a.uri,
+          name: a.asset.name,
+          programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          symbol: a.asset.symbol,
+          tags: ["mixin"],
+          priority: 90,
+        }
       })
     const sortedTokenList = sortItems(tokenList, {
       sortRules: [

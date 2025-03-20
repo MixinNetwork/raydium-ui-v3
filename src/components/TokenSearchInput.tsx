@@ -32,6 +32,7 @@ export default forwardRef(function TokenSearchInput(
     (s) => [s.displayTokenList, s.tokenMap, s.setExtraTokenListAct, s.setDisplayTokenListAct],
     shallow
   )
+  const [computerAssetAddressMap, getToken] = useTokenStore((s) => [s.computerAssetAddressMap, s.getToken], shallow)
 
   const ref = useRef<HTMLInputElement>(null)
   const [searchValue, setSearchValue] = useState(value)
@@ -58,7 +59,7 @@ export default forwardRef(function TokenSearchInput(
 
   const handleClick = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
-      const token = tokenMap.get(e.currentTarget.dataset.mint!)
+      const token = getToken(e.currentTarget.dataset.mint!)
       if (token) {
         onSelectedListChange ? onSelectedListChange([...selectedList.concat([token])]) : setSelectedList([...selectedList.concat([token])])
         onChange('')
@@ -116,7 +117,22 @@ export default forwardRef(function TokenSearchInput(
   const _filteredList = useMemo(() => {
     if (!searchValue) return []
     const selectedSet = new Set(selectedList.map((token) => token.address))
-    return filterTokenFn(displayTokenList, {
+    const computerTokenList = Object.values(computerAssetAddressMap)
+    .map(a => {
+      return {
+        address: a.address,
+        chainId: 101,
+        decimals: a.asset.precision,
+        extensions: {},
+        logoURI: a.uri,
+        name: a.asset.name,
+        programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        symbol: a.asset.symbol,
+        tags: ["mixin"],
+        priority: 90,
+      }
+    })
+    return filterTokenFn([...computerTokenList, ...displayTokenList], {
       searchStr: searchValue,
       skipFn: (data) => selectedSet.has(data.address)
     })
