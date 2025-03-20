@@ -6,9 +6,9 @@ import { colors } from '@/theme/cssVariables/colors'
 import toPercentString from '@/utils/numberish/toPercentString'
 import { formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import { AprData } from '@/features/Clmm/utils/calApr'
-import { Box, Flex, HStack, Text } from '@chakra-ui/react'
+import { Box, Flex, HStack, Stack, Text } from '@chakra-ui/react'
 import { useTranslation } from 'react-i18next'
-import { Cell, Label, Pie, PieChart, ResponsiveContainer } from 'recharts'
+import { Cell, Label, Pie, PieChart } from 'recharts'
 
 export const PORTFOLIO_PIE_COLORS = [colors.chart03, colors.chart04, colors.chart02, colors.chart05, colors.chart06]
 
@@ -40,7 +40,7 @@ export default function EstimatedAprInfo({ aprData, value, onChange }: Props) {
           </Text>
         )}
         <Box>
-          <ResponsiveContainer width={isMobile ? 90 : 60} height={isMobile ? 90 : 60}>
+          <Stack width={isMobile ? 90 : 60} height={isMobile ? 90 : 60}>
             <PieChart>
               <Pie
                 data={aprData ? [aprData.fee, ...aprData.rewards] : []}
@@ -66,7 +66,7 @@ export default function EstimatedAprInfo({ aprData, value, onChange }: Props) {
                 )}
               </Pie>
             </PieChart>
-          </ResponsiveContainer>
+          </Stack>
         </Box>
 
         <Flex flexWrap={'wrap'} columnGap={[2, 4]} rowGap={1}>

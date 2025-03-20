@@ -188,14 +188,8 @@ export default function CreateClmmPool() {
         new Decimal(currentCreateInfo.current.amount2!).mul(10 ** buildData.extInfo.mockPoolInfo.mintB.decimals).toFixed(0)
       ]
 
-      const nonce2 = await initComputerClient().getNonce(getUserMix())
-      const reqs = await openPositionAct({
-        nonce: nonce2,
+      const { requests } = await openPositionAct({
         poolNonce: nonce1,
-        tokens: {
-          token1: token1!,
-          token2: token2!,
-        },
         poolInfo: buildData.extInfo.mockPoolInfo,
         poolKeys: buildData.extInfo.address,
         tickLower: Math.min(currentCreateInfo.current.tickLower!, currentCreateInfo.current.tickUpper!),
@@ -209,7 +203,7 @@ export default function CreateClmmPool() {
         },
         onFinally: () => setIsTxSending(false)
       })
-      setRequests(reqs);
+      setRequests(requests);
       onOpenTraceModal();
     })
   )

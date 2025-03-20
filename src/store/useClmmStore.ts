@@ -74,11 +74,6 @@ interface ClmmState {
   ) => Promise<{ txId: string; buildData?: MakeMultiTxData<TxVersion> }>
   openPositionAct: (
     props: {
-      nonce: ComputerNonceResponse
-      tokens?: {
-        token1: Token;
-        token2: Token;
-      }
       poolInfo: ApiV3PoolInfoConcentratedItem
       poolKeys?: ClmmKeys
       tickLower: number
@@ -93,7 +88,10 @@ interface ClmmState {
       txId: string
       buildData: TxBuildData<OpenPositionFromBaseExtInfo> | TxV0BuildData<OpenPositionFromBaseExtInfo>
     }>
-  ) => Promise<ComputerSystemCallRequest[]>
+  ) => Promise<{
+    requests: ComputerSystemCallRequest[];
+    buildData: TxBuildData<OpenPositionFromBaseExtInfo> | TxV0BuildData<OpenPositionFromBaseExtInfo> | undefined
+  }>
   closePositionAct: (
     props: {
       poolInfo: ApiV3PoolInfoConcentratedItem
@@ -294,8 +292,6 @@ export const useClmmStore = createStore<ClmmState>(
     },
 
     openPositionAct: async ({
-      tokens,
-      nonce,
       poolNonce,
       poolInfo,
       poolKeys,
@@ -308,15 +304,32 @@ export const useClmmStore = createStore<ClmmState>(
       onCloseToast,
       ...txProps
     }) => {
-      const { raydium, publicKey, wallet, txVersion, info, keystore, user, account, getComputerRecipient } = useAppStore.getState()
-      if (!poolInfo) return [];
+      const { raydium, publicKey, wallet, txVersion, info, keystore, user, account, balanceAddressMap, getComputerRecipient, getUserMix } = useAppStore.getState()
+      if (!poolInfo) return {
+        requests: [],
+        buildData: undefined
+      };
       const computer = getComputerRecipient()
-      if (!tokens || !raydium || !keystore || !user || !publicKey || !info || !account || !computer) {
+      if (!raydium || !keystore || !user || !publicKey || !info || !account || !computer) {
         toastSubject.next({ noRpc: true })
-        return [];
+        return {
+          requests: [],
+          buildData: undefined
+        };
       }
+      const token1 = balanceAddressMap[poolInfo.mintA.address]
+      const token2 = balanceAddressMap[poolInfo.mintB.address]
+      if (!token1 || !token2) {
+        toastSubject.next({ title: "invalid tokens", status: "error" })
+        return {
+          requests: [],
+          buildData: undefined
+        };
+      }
+
       // try {
         const computeBudgetConfig = await getComputeBudgetConfig()
+        const nonce = await initComputerClient().getNonce(getUserMix())
 
         const owner = new PublicKey(publicKey)
         const txBuilder = new TxBuilder({
@@ -427,7 +440,10 @@ export const useClmmStore = createStore<ClmmState>(
 
         if (!buildData) {
           txProps.onError?.()
-          return [];
+          return {
+            requests: [],
+            buildData: undefined
+          };
         }
         const amount1 = base === 'MintA' 
           ? formatUnits(baseAmount, poolInfo.mintA.decimals).toString() 
@@ -435,38 +451,28 @@ export const useClmmStore = createStore<ClmmState>(
         const amount2 = base === 'MintA' 
           ? formatUnits(otherAmountMax, poolInfo.mintB.decimals).toString() 
           : formatUnits(baseAmount, poolInfo.mintB.decimals).toString();
-        const token1 = tokens.token1.info.address === poolInfo.mintA.address ? tokens.token1 : tokens.token2;
-        const token2 = tokens.token1.info.address === poolInfo.mintB.address ? tokens.token1 : tokens.token2;
         
+        const client = initComputerClient(); 
+        const rentMap: Record<string, number> = {}  
+        const sizes = Array.from(new Set([...CREATE_POOL_RENT_SIZES, ...OPEN_POSITION_RENT_SIZES]));
+        const rents = await Promise.all(sizes.map(size => raydium.connection.getMinimumBalanceForRentExemption(size)))
+        sizes.forEach((size, index) => {
+          rentMap[size] = rents[index]
+        })
+
+        const reqs: ComputerSystemCallRequest[] = [];
         // create pool and open position
         if (createPoolBuildData) {
-          const client = initComputerClient();     
+          let total1 = CREATE_POOL_RENT_SIZES.reduce((prev, cur) => {
+            const total = prev + rentMap[cur]
+            return total
+          }, 0)
+          total1 = Math.floor(total1 * 1.1)
+
           const { transactions } = await createPoolBuildData.builder.sizeCheckBuildV0();
           if (transactions.length !== 1 || !poolNonce) throw new Error('invalid create pool transaction');
           transactions[0].message.recentBlockhash = poolNonce.nonce_hash;
-          const tx1 = Buffer.from(transactions[0].serialize()).toString('base64');  
-          const { transactions: txs } = await buildData.builder.sizeCheckBuildV0();
-          if (txs.length !== 1) throw new Error('invalid open position transaction');
-          txs[0].message.recentBlockhash = nonce.nonce_hash;
-          txs[0].sign(insInfo.signers);
-          const tx2 = Buffer.from(txs[0].serialize()).toString('base64');  
-
-          const rentMap: Record<string, number> = {}
-          let total1 = 0
-          let total2 = 0
-          const sizes = Array.from(new Set([...CREATE_POOL_RENT_SIZES, ...OPEN_POSITION_RENT_SIZES]));
-          const rents = await Promise.all(sizes.map(size => raydium.connection.getMinimumBalanceForRentExemption(size)))
-          sizes.forEach((size, index) => {
-            rentMap[size] = rents[index]
-          })
-          CREATE_POOL_RENT_SIZES.forEach(size => {
-            total1 += rentMap[size]
-          })
-          OPEN_POSITION_RENT_SIZES.forEach(size => {
-            total2 += rentMap[size]
-          })
-          total1 = Math.floor(total1 * 1.1)
-          total2 = Math.floor(total2 * 1.1)
+          const tx1 = Buffer.from(transactions[0].serialize()).toString('base64');
 
           const invoice = newMixinInvoice(computer);
           if (!invoice) throw new Error('computer connection failed');
@@ -498,58 +504,74 @@ export const useClmmStore = createStore<ClmmState>(
             trace: trace,
             value: handleInvoiceSchema(getInvoiceString(invoice)),
           }
+          reqs.push(req1);
+        }
 
-          const storage2 = await client.storageTx(tx2);
-          const trace2 = uniqueConversationID(storage2.hash, "system call");
-          const extra2 = buildComputerExtra(
-            info.members.app_id, 
-            OperationTypeSystemCall, 
-            buildSystemCallInvoiceExtra(account.id, trace2, false, storage2.hash)
-          )
-          const invoice2 = buildInvoiceWithEntries(
-            computer, 
+        const { transactions: txs } = await buildData.builder.sizeCheckBuildV0();
+        if (txs.length !== 1) throw new Error('invalid open position transaction');
+        txs[0].message.recentBlockhash = nonce.nonce_hash;
+        txs[0].sign(insInfo.signers);
+        const tx2 = Buffer.from(txs[0].serialize()).toString('base64');
+
+        let total2 = OPEN_POSITION_RENT_SIZES.reduce((prev, cur) => {
+          const total = prev + rentMap[cur]
+          return total
+        }, 0)
+        total2 = Math.floor(total2 * 1.1)
+
+        const storage2 = await client.storageTx(tx2);
+        const trace2 = uniqueConversationID(storage2.hash, "system call");
+        const extra2 = buildComputerExtra(
+          info.members.app_id, 
+          OperationTypeSystemCall, 
+          buildSystemCallInvoiceExtra(account.id, trace2, false, storage2.hash)
+        )
+        const invoice2 = buildInvoiceWithEntries(
+          computer, 
+          {
+            trace_id: trace2,
+            asset_id: XIN_ASSET_ID,
+            amount: info.params.operation.price,
+            extra: Buffer.from(extra2),
+            index_references: [],
+            hash_references: []
+          }, 
+          [
             {
-              trace_id: trace2,
-              asset_id: XIN_ASSET_ID,
-              amount: info.params.operation.price,
-              extra: Buffer.from(extra2),
+              trace_id: uniqueConversationID(uniqueConversationID(trace2, SOL_ASSET_ID), "rent"),
+              asset_id: SOL_ASSET_ID,
+              amount: formatUnits(total2, SOL_DECIMAL).toString(),
+              extra: computerEmptyExtra,
               index_references: [],
               hash_references: []
-            }, 
-            [
-              {
-                trace_id: uniqueConversationID(uniqueConversationID(trace2, SOL_ASSET_ID), "rent"),
-                asset_id: SOL_ASSET_ID,
-                amount: formatUnits(total2, SOL_DECIMAL).toString(),
-                extra: computerEmptyExtra,
-                index_references: [],
-                hash_references: []
-              },
-              {
-                trace_id: uniqueConversationID(trace2, tokens.token1.balance.asset_id),
-                asset_id: token1.balance.asset_id,
-                amount: amount1,
-                extra: computerEmptyExtra,
-                index_references: [],
-                hash_references: []
-              },
-              {
-                trace_id: uniqueConversationID(trace2, tokens.token2.balance.asset_id),
-                asset_id: token2.balance.asset_id,
-                amount: amount2,
-                extra: computerEmptyExtra,
-                index_references: [0],
-                hash_references: []
-              }
-            ]
-          )
-          const req2 = {
-            trace: trace2,
-            value: handleInvoiceSchema(getInvoiceString(invoice2)),
-          }
-          return [req1, req2];
-        }
-        return [];
+            },
+            {
+              trace_id: uniqueConversationID(trace2, token1.asset_id),
+              asset_id: token1.asset_id,
+              amount: amount1,
+              extra: computerEmptyExtra,
+              index_references: [],
+              hash_references: []
+            },
+            {
+              trace_id: uniqueConversationID(trace2, token2.asset_id),
+              asset_id: token2.asset_id,
+              amount: amount2,
+              extra: computerEmptyExtra,
+              index_references: [0],
+              hash_references: []
+            }
+          ]
+        )
+        console.log(invoice2)
+        reqs.push({
+          trace: trace2,
+          value: handleInvoiceSchema(getInvoiceString(invoice2)),
+        })
+        return {
+          requests: reqs,
+          buildData
+        };
       // } catch (e: any) {
       //   txProps.onError?.()
       //   txProps.onFinally?.()
