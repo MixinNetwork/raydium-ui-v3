@@ -303,7 +303,7 @@ export function SwapPanel({
         const call = await client.fetchCall(requests[requests.length - 1].trace);
         if (call.state === 'done') {
           toastSubject.next({
-            status: 'error',
+            status: 'success',
             title: `${t('transaction.title')} ${t('transaction.confirmed')}`,
             description: call.hash
           });

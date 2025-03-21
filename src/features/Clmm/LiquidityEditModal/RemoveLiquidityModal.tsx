@@ -38,6 +38,10 @@ import { removeValidateSchema } from './validateSchema'
 import { useEvent } from '@/hooks/useEvent'
 import { RpcPoolData } from '@/hooks/pool/clmm/useSubscribeClmmInfo'
 import { useDisclosure } from '@/hooks/useDelayDisclosure'
+import { ComputerSystemCallRequest } from '@/types/computer'
+import { initComputerClient } from '@/api/computer'
+import { toastSubject } from '@/hooks/toast/useGlobalToast'
+import { MixinMultipleTracesModal } from '@/components/Mixin/MixinMultipleTracesModal'
 
 export default function RemoveLiquidityModal({
   isOpen,
@@ -81,7 +85,10 @@ export default function RemoveLiquidityModal({
   const [percent, setPercent] = useState(0)
   const [closePosition, setClosePosition] = useState(true)
   const [closePositionOpen, setClosePositionOpen] = useState(false)
+  const [requests, setRequests] = useState<ComputerSystemCallRequest[]>([])
 
+  const { isOpen: isTraceModalOpen, onOpen: onOpenTraceModal, onClose: onCloseTraceModal } = useDisclosure()
+  
   const [positionAmountA, positionAmountB] = [
     amountSlippageA.toDecimalPlaces(poolInfo.mintA.decimals, Decimal.ROUND_FLOOR).toString(),
     amountSlippageB.toDecimalPlaces(poolInfo.mintB.decimals, Decimal.ROUND_FLOOR).toString()
@@ -162,6 +169,59 @@ export default function RemoveLiquidityModal({
   const handleClosePositionChange = useEvent((event: ChangeEvent<HTMLInputElement>) => {
     setClosePosition(!event.target.checked)
   })
+
+  const handleRemove = useCallback(async () => {
+    setIsSending(true)
+    const reqs = await removeLiquidityAct({
+      poolInfo,
+      position,
+      liquidity: new Decimal(position.liquidity.toString()).mul(percent / 100).toFixed(0),
+      amountMinA: minTokenAmount[0],
+      amountMinB: minTokenAmount[1],
+      needRefresh: percent <= 100,
+      closePosition: percent === 100 ? closePosition : undefined,
+      onSent: () => {
+        setIsSending(false)
+        setPercent(0)
+        setTokenAmount(['', ''])
+        setMinTokenAmount(['', ''])
+        handleCloseModal()
+      },
+      onError: () => setIsSending(false)
+    })
+    setRequests(reqs);
+    onOpenTraceModal();
+  }, [minTokenAmount])
+  useEffect(() => {
+    if (requests.length === 0) return;
+    const client = initComputerClient();
+    const timer = setInterval(async () => {
+      try {
+        const call = await client.fetchCall(requests[requests.length - 1].trace);
+        if (call.state === 'done') {
+          setIsSending(false);
+          onClose();
+          toastSubject.next({
+            status: 'success',
+            title: `${t('transaction.title')} ${t('transaction.confirmed')}`,
+            description: call.hash
+          });
+          clearInterval(timer);
+        } else if (call.state === 'failed') {
+          setIsSending(false);
+          onClose();
+          toastSubject.next({
+            status: 'error',
+            description: 'transation failed'
+          });
+          clearInterval(timer);
+        }
+      } catch {
+        // console.log(err)
+      }
+    }, 1000 * 5);
+    return () => clearInterval(timer);
+  }, [requests])
 
   useEffect(() => {
     setPercent(0)
@@ -318,26 +378,7 @@ export default function RemoveLiquidityModal({
             isDisabled={featureDisabled || (!position.liquidity.isZero() && !!error)}
             isLoading={sending}
             loadingText={t(position.liquidity.isZero() ? 'clmm.close_position' : 'liquidity.withdraw_liquidity') + '...'}
-            onClick={() => {
-              setIsSending(true)
-              removeLiquidityAct({
-                poolInfo,
-                position,
-                liquidity: new Decimal(position.liquidity.toString()).mul(percent / 100).toFixed(0),
-                amountMinA: minTokenAmount[0],
-                amountMinB: minTokenAmount[1],
-                needRefresh: percent <= 100,
-                closePosition: percent === 100 ? closePosition : undefined,
-                onSent: () => {
-                  setIsSending(false)
-                  setPercent(0)
-                  setTokenAmount(['', ''])
-                  setMinTokenAmount(['', ''])
-                  handleCloseModal()
-                },
-                onError: () => setIsSending(false)
-              })
-            }}
+            onClick={handleRemove}
           >
             {featureDisabled ? t('common.disabled') : position.liquidity.isZero() ? t('clmm.close_position') : error || t('button.confirm')}
           </Button>
@@ -346,6 +387,10 @@ export default function RemoveLiquidityModal({
           </Button>
         </ModalFooter>
       </ModalContent>
+      {
+        requests.length > 0 && isTraceModalOpen &&
+        <MixinMultipleTracesModal isOpen={isTraceModalOpen} onClose={onCloseTraceModal} requests={requests}/>
+      }
     </Modal>
   )
 }

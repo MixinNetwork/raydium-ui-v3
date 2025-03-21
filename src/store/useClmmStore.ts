@@ -26,7 +26,7 @@ import {
   mockV3CreatePoolInfo,
   WSOLMint,
 } from '@raydium-io/raydium-sdk-v2'
-import { PublicKey, SystemProgram } from '@solana/web3.js'
+import { AddressLookupTableAccount, PublicKey, SystemProgram, TransactionMessage, VersionedTransaction } from '@solana/web3.js'
 import createStore from '@/store/createStore'
 import { useAppStore, useTokenAccountStore, useLiquidityStore } from '@/store'
 import { isSolWSol } from '@/utils/token'
@@ -46,7 +46,7 @@ import { ClmmLockInfo } from '@/hooks/portfolio/clmm/useClmmBalance'
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import { ComputerNonceResponse, ComputerSystemCallRequest, Token } from '@/types/computer'
-import { buildInvoiceWithEntries, buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema, computerEmptyExtra } from '@/utils/mixin'
+import { buildInvoiceWithEntries, buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema, computerEmptyExtra, buildAssetId } from '@/utils/mixin'
 import { attachInvoiceEntry, formatUnits, getInvoiceString, newMixinInvoice, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
 import { CREATE_POOL_RENT_SIZES, OPEN_POSITION_RENT_SIZES, OperationTypeSystemCall, SOL_ASSET_ID, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { initComputerClient } from '@/api/computer'
@@ -109,7 +109,7 @@ interface ClmmState {
       harvest?: boolean
       closePosition?: boolean
     } & TxCallbackProps
-  ) => Promise<string>
+  ) => Promise<ComputerSystemCallRequest[]>
   increaseLiquidityAct: (
     props: {
       poolInfo: ApiV3PoolInfoConcentratedItem
@@ -593,10 +593,15 @@ export const useClmmStore = createStore<ClmmState>(
       onFinally,
       onConfirmed
     }) => {
-      const { raydium, txVersion, getEpochInfo } = useAppStore.getState()
+      const { raydium, txVersion, getEpochInfo } = useAppStore.getState()      
+      const { publicKey, connection, account, info, getUserMix, getComputerRecipient } = useAppStore.getState()
+      const computer = getComputerRecipient()
+      if (!publicKey || !raydium || !connection || !info || !computer || !account) {
+        console.error('no connection')
+        return [];
+      }
+      
       const slippage = useLiquidityStore.getState().slippage
-      if (!raydium) return ''
-
       const [_amountMinA, _amountMinB] = [
         new BN(
           new Decimal(amountMinA.toString())
@@ -616,8 +621,12 @@ export const useClmmStore = createStore<ClmmState>(
       const { fee: feeB = new BN(0) } = getTransferAmountFeeV2(_amountMinB, poolInfo.mintB.extensions.feeConfig, epochInfo!, false)
 
       try {
+        const close = !position.liquidity.eq(new BN(liquidity)) ? false : closePosition ?? position.liquidity.eq(new BN(liquidity))
+        const rent =  await raydium.connection.getMinimumBalanceForRentExemption(165)
+        const rentAmount = Math.floor(rent * 2 * 1.1);
+
         const computeBudgetConfig = await getComputeBudgetConfig()
-        const { execute } = await raydium.clmm.decreaseLiquidity({
+        const { transaction: old  } = await raydium.clmm.decreaseLiquidity({
           poolInfo,
           ownerPosition: position,
           ownerInfo: {
@@ -630,43 +639,74 @@ export const useClmmStore = createStore<ClmmState>(
           computeBudgetConfig,
           txVersion
         })
-
-        const meta = getTxMeta({
-          action: harvest ? 'harvest' : 'removeLiquidity',
-          values: {
-            amountA: amountMinA || 0,
-            symbolA: getMintSymbol({ mint: poolInfo.mintA, transformSol: true }),
-            amountB: amountMinB || 0,
-            symbolB: getMintSymbol({ mint: poolInfo.mintB, transformSol: true })
-          }
+        const res = await Promise.all((old as VersionedTransaction).message.addressTableLookups
+          .map(a => connection.getAddressLookupTable(a.accountKey)))
+        const alts = res.filter(r => r.value).map(r => r.value) as AddressLookupTableAccount[]
+        const swapIxs = TransactionMessage.decompile((old as VersionedTransaction).message, {
+          addressLookupTableAccounts: alts
+        }).instructions;
+  
+        const client = initComputerClient();
+        const nonce = await client.getNonce(getUserMix())
+        const nonceIns = SystemProgram.nonceAdvance({
+          noncePubkey: new PublicKey(nonce.nonce_address),
+          authorizedPubkey: new PublicKey(info.payer)
         })
+        const messageV0 = new TransactionMessage({
+          payerKey: publicKey,
+          recentBlockhash: nonce.nonce_hash,
+          instructions: [nonceIns, ...swapIxs,],
+        }).compileToV0Message();
+        const tx = new VersionedTransaction(messageV0);
 
-        return execute()
-          .then(({ txId, signedTx }) => {
-            txStatusSubject.next({
-              txId,
-              ...meta,
-              mintInfo: [poolInfo.mintA, poolInfo.mintB],
-              signedTx,
-              onError,
-              onSent,
-              onConfirmed: () => {
-                onConfirmed?.()
-                if (needRefresh) setTimeout(() => useTokenAccountStore.setState({ refreshClmmPositionTag: Date.now() }), 500)
-              }
-            })
-            return txId
-          })
-          .catch((e) => {
-            onError?.()
-            toastSubject.next({ txError: e, ...meta })
-            return ''
-          })
-          .finally(() => onFinally?.())
-      } catch {
+        const memo = Buffer.from(tx.serialize()).toString('base64');
+        const storage = await client.storageTx(memo);
+        const trace = uniqueConversationID(storage.hash, "system call");
+        const extra = buildComputerExtra(
+          info.members.app_id, 
+          OperationTypeSystemCall, 
+          buildSystemCallInvoiceExtra(account.id, trace, true, storage.hash)
+        )
+        const referencedEntries = [
+          {
+            trace_id: uniqueConversationID(uniqueConversationID(trace, SOL_ASSET_ID), "rent"),
+            asset_id: SOL_ASSET_ID,
+            amount: formatUnits(rentAmount, SOL_DECIMAL).toString(),
+            extra: computerEmptyExtra,
+            index_references: [],
+            hash_references: []
+          },
+        ]
+        if (false) referencedEntries.push({
+          trace_id: uniqueConversationID(trace, position.nftMint.toString()),
+          asset_id: buildAssetId(position.nftMint.toString()),
+          amount: "1",
+          extra: computerEmptyExtra,
+          index_references: [],
+          hash_references: []
+        })
+        const invoice = buildInvoiceWithEntries(
+          computer, 
+          {
+            trace_id: trace,
+            asset_id: XIN_ASSET_ID,
+            amount: info.params.operation.price,
+            extra: Buffer.from(extra),
+            index_references: [],
+            hash_references: []
+          }, referencedEntries
+        )
+        console.log(invoice)
+        const req1 = {
+          trace: trace,
+          value: handleInvoiceSchema(getInvoiceString(invoice)),
+        }
+        return [req1]
+      } catch(e) {
+        console.log(e)
         onError?.()
         onFinally?.()
-        return ''
+        return []
       }
     },
 
