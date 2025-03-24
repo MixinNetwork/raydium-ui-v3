@@ -33,5 +33,5 @@ export default function useComputer() {
   useEffect(() => {
     if (!publicKey || !raydium) return;
     raydium.setOwner(publicKey)
-  }, [publicKey])
+  }, [publicKey, raydium])
 }

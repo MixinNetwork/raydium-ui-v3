@@ -65,14 +65,12 @@ export const useSwapStore = createStore<SwapStore>(
     swapTokenAct: async ({ swapResponse, wrapSol, unwrapSol = false, onCloseToast, ...txProps }) => {
       const { publicKey, raydium, txVersion, connection, urlConfigs, account, info, balanceAddressMap, getUserMix, getComputerRecipient } = useAppStore.getState()
       const computer = getComputerRecipient()
-      if (!raydium || !connection || !info || !computer || !account) {
+      if (!raydium || !connection || !info || !computer || !account || !publicKey) {
         console.error('no connection')
+        toastSubject.next({ status: "error", description: "no connection" })
         return [];
       }
-      if (!publicKey) {
-        console.error('no wallet')
-        return [];
-      }
+      if (!raydium.owner) raydium.setOwner(publicKey);
 
       try {
         const tokenMap = useTokenStore.getState().tokenMap

@@ -317,6 +317,7 @@ export const useClmmStore = createStore<ClmmState>(
           buildData: undefined
         };
       }
+      if (!raydium.owner) raydium.setOwner(publicKey);
       const token1 = balanceAddressMap[poolInfo.mintA.address]
       const token2 = balanceAddressMap[poolInfo.mintB.address]
       if (!token1 || !token2) {
@@ -600,6 +601,7 @@ export const useClmmStore = createStore<ClmmState>(
         console.error('no connection')
         return [];
       }
+      if (!raydium.owner) raydium.setOwner(publicKey);
       
       const slippage = useLiquidityStore.getState().slippage
       const [_amountMinA, _amountMinB] = [
@@ -677,7 +679,7 @@ export const useClmmStore = createStore<ClmmState>(
             hash_references: []
           },
         ]
-        if (false) referencedEntries.push({
+        if (close) referencedEntries.push({
           trace_id: uniqueConversationID(trace, position.nftMint.toString()),
           asset_id: buildAssetId(position.nftMint.toString()),
           amount: "1",
