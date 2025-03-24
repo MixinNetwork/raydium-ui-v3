@@ -55,6 +55,10 @@ export default function SelectPoolTokenAndFee({ completed, initState, show, isLo
   const clmmFeeOptions = Object.values(clmmFeeConfigs)
   const as = useTokenStore((s) => s.computerAssets);
   const setExtraTokenListAct = useTokenStore((s) => s.setExtraTokenListAct)
+  const { computerAssetIdMap, getComputerAssets } = useTokenStore((s) => ({
+    computerAssetIdMap: s.computerAssetIdMap,
+    getComputerAssets: s.getComputerAssets,
+  }))
   const [tokens, setTokens] = useState<{
     token1?: UserAssetBalance
     token2?: UserAssetBalance
@@ -138,13 +142,16 @@ export default function SelectPoolTokenAndFee({ completed, initState, show, isLo
   const client = initComputerClient();
   const handleCompleted = useCallback(
     async () => {
-      const da = await client.fetchAssets();
-      const map = da.reduce((prev, cur) => {
-        prev[cur.asset_id] = cur.address;
-        return prev;
-      }, {} as Record<string, string>);
-      const completed = deployingAssets.every(asset => !!map[asset]);
+      if (deployingAssets.length === 0) return;
+      if (!tokens.token1 || !tokens.token2) return;
+      await getComputerAssets();
+      const completed = deployingAssets.every(asset => !!computerAssetIdMap[asset]);
       if (completed) {
+        deployingAssets.forEach((t) => {
+          const a = computerAssetIdMap[t];
+          if (tokens.token1?.asset_id === t) tokens.token1.address = a.address
+          if (tokens.token2?.asset_id === t) tokens.token2.address = a.address
+        })
         toastSubject.next({
           status: 'success',
           description: t("computer.deploy_success"),
@@ -152,7 +159,7 @@ export default function SelectPoolTokenAndFee({ completed, initState, show, isLo
         deploying.onClose();
       }
     },
-    [deployingAssets]
+    [deployingAssets, tokens]
   )
   const checkUndeployedExternalAsset = useCallback(
     (token: UserAssetBalance) => {
