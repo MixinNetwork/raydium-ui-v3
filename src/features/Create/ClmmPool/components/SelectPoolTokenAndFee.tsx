@@ -22,7 +22,7 @@ import { initComputerClient } from '@/api/computer'
 import { SOL_ASSET_ID } from '@/utils/constant'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
 import useTokenInfo from '@/hooks/token/useTokenInfo'
-import { Token, UserAssetBalance } from '@/types/computer'
+import { ComputerAssetResponse, Token, UserAssetBalance } from '@/types/computer'
 
 type Side = 'token1' | 'token2'
 
@@ -144,11 +144,15 @@ export default function SelectPoolTokenAndFee({ completed, initState, show, isLo
     async () => {
       if (deployingAssets.length === 0) return;
       if (!tokens.token1 || !tokens.token2) return;
-      await getComputerAssets();
-      const completed = deployingAssets.every(asset => !!computerAssetIdMap[asset]);
+      const da = await client.fetchAssets();
+      const map = da.reduce((prev, cur) => {
+        prev[cur.asset_id] = cur;
+        return prev;
+      }, {} as Record<string, ComputerAssetResponse>);
+      const completed = deployingAssets.every(asset => !!map[asset]);
       if (completed) {
         deployingAssets.forEach((t) => {
-          const a = computerAssetIdMap[t];
+          const a = map[t];
           if (tokens.token1?.asset_id === t) tokens.token1.address = a.address
           if (tokens.token2?.asset_id === t) tokens.token2.address = a.address
         })
@@ -156,6 +160,8 @@ export default function SelectPoolTokenAndFee({ completed, initState, show, isLo
           status: 'success',
           description: t("computer.deploy_success"),
         });
+        setDeployingAssets([]);
+        getComputerAssets();
         deploying.onClose();
       }
     },
