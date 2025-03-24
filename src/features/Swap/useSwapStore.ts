@@ -163,7 +163,7 @@ export const useSwapStore = createStore<SwapStore>(
         const extra = buildComputerExtra(
           info.members.app_id, 
           OperationTypeSystemCall, 
-          buildSystemCallInvoiceExtra(account.id, trace, true, storage.hash)
+          buildSystemCallInvoiceExtra(account.id, trace, false, storage.hash)
         )
         const invoice = buildInvoiceWithEntries(
           computer, 
