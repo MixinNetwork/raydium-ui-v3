@@ -8,7 +8,7 @@ axios.defaults.headers.post['Content-Type'] = 'application/json';
 export const initComputerClient = (responseCallback?: (e: any) => void) => {
   const ins = axios.create({
     baseURL: getEnvConfig().api,
-    timeout: 1000 * 60,
+    timeout: 1000 * 60 * 10,
   });
 
   ins.interceptors.response.use(async (res: AxiosResponse) => {

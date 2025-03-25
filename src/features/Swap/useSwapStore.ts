@@ -1,5 +1,6 @@
-import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram, AddressLookupTableAccount } from '@solana/web3.js'
-import { TxVersion, SOL_INFO, LOOKUP_TABLE_CACHE } from '@raydium-io/raydium-sdk-v2'
+import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram } from '@solana/web3.js'
+import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget } from '@raydium-io/raydium-sdk-v2'
+import BN from 'bn.js'
 import { createStore, useAppStore, useTokenStore } from '@/store'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
 import { txStatusSubject } from '@/hooks/toast/useTxStatus'
@@ -11,7 +12,6 @@ import { TxCallbackProps } from '@/types/tx'
 import i18n from '@/i18n'
 import { fetchComputePrice } from '@/utils/tx/computeBudget'
 import { trimTailingZero } from '@/utils/numberish/formatter'
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { initComputerClient } from '@/api/computer'
 import { formatUnits, getInvoiceString, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
 import { buildComputerExtra, buildInvoiceWithEntries, buildSystemCallInvoiceExtra, computerEmptyExtra, handleInvoiceSchema } from '@/utils/mixin'
@@ -63,7 +63,7 @@ export const useSwapStore = createStore<SwapStore>(
     ...initSwapState,
 
     swapTokenAct: async ({ swapResponse, wrapSol, unwrapSol = false, onCloseToast, ...txProps }) => {
-      const { publicKey, raydium, txVersion, connection, urlConfigs, account, info, balanceAddressMap, getUserMix, getComputerRecipient } = useAppStore.getState()
+      const { publicKey, raydium, connection, urlConfigs, account, info, balanceAddressMap, getUserMix, getComputerRecipient } = useAppStore.getState()
       const computer = getComputerRecipient()
       if (!raydium || !connection || !info || !computer || !account || !publicKey) {
         console.error('no connection')
@@ -73,57 +73,73 @@ export const useSwapStore = createStore<SwapStore>(
       if (!raydium.owner) raydium.setOwner(publicKey);
 
       try {
-        const tokenMap = useTokenStore.getState().tokenMap
         const getToken = useTokenStore.getState().getToken
         const [inputToken, outputToken] = [getToken(swapResponse.data.inputMint)!, getToken(swapResponse.data.outputMint)!]
-        const [isInputSol, isOutputSol] = [wrapSol && isSolWSol(swapResponse.data.inputMint), isSolWSol(swapResponse.data.outputMint)]
-
-        const inputTokenAcc = raydium.account.getAssociatedTokenAccount(
-          new PublicKey(inputToken.address), 
-          new PublicKey(inputToken.programId ?? TOKEN_PROGRAM_ID)
-        )
-
-        const outputTokenAcc = await raydium.account.getCreatedTokenAccount({
-          programId: new PublicKey(outputToken.programId ?? TOKEN_PROGRAM_ID),
-          mint: new PublicKey(outputToken.address)
-        })
 
         const computeData = await getSwapComputePrice()
+        const computeIns = computeData ? addComputeBudget(computeData).instructions : []
 
-        const isV0Tx = txVersion === TxVersion.V0
-        const {
-          data,
-          success
-        }: {
-          id: string
-          success: true
-          version: 'V1'
-          msg?: string
-          data?: { transaction: string }[]
-        } = await axios.post(
-          `${urlConfigs.SWAP_HOST}${urlConfigs.SWAP_TX}${swapResponse.data.swapType === 'BaseIn' ? 'swap-base-in' : 'swap-base-out'}`,
-          {
-            wallet: publicKey.toBase58(),
-            computeUnitPriceMicroLamports: new Decimal(computeData?.microLamports || 0).toFixed(0),
-            swapResponse,
-            txVersion: isV0Tx ? 'V0' : 'LEGACY',
-            wrapSol: isInputSol,
-            unwrapSol,
-            inputAccount: isInputSol ? undefined : inputTokenAcc?.toBase58(),
-            outputAccount: isOutputSol ? undefined : outputTokenAcc?.toBase58()
-          }
+        const poolsResp = await axios.get<PoolKeys[]>(
+          urlConfigs.BASE_HOST + urlConfigs.POOL_KEY_BY_ID + `?ids=${swapResponse.data.routePlan.map((r) => r.poolId).join(',')}`
         )
-        if (!success) {
-          toastSubject.next({
-            title: 'Make Transaction Error',
-            description: 'Please try again, or contact us on discord',
-            status: 'error'
-          })
-          onCloseToast && onCloseToast()
-          return [];
-        }
+        const allMints = poolsResp.data.map((r) => [r.mintA, r.mintB]).flat()
+        const [mintAProgram, mintBProgram] = [
+          allMints.find((m) => m.address === swapResponse.data.inputMint)!.programId,
+          allMints.find((m) => m.address === swapResponse.data.outputMint)!.programId,
+        ]
+        const inputAccount =  getATAAddress(publicKey, new PublicKey(swapResponse.data.inputMint), new PublicKey(mintAProgram)).publicKey
+        const outputAccount = getATAAddress(publicKey, new PublicKey(swapResponse.data.outputMint), new PublicKey(mintBProgram)).publicKey
+        
+        // const isV0Tx = txVersion === TxVersion.V0
+        // const {
+        //   data,
+        //   success
+        // }: {
+        //   id: string
+        //   success: true
+        //   version: 'V1'
+        //   msg?: string
+        //   data?: { transaction: string }[]
+        // } = await axios.post(
+        //   `${urlConfigs.SWAP_HOST}${urlConfigs.SWAP_TX}${swapResponse.data.swapType === 'BaseIn' ? 'swap-base-in' : 'swap-base-out'}`,
+        //   {
+        //     wallet: publicKey.toBase58(),
+        //     computeUnitPriceMicroLamports: new Decimal(computeData?.microLamports || 0).toFixed(0),
+        //     swapResponse,
+        //     txVersion: isV0Tx ? 'V0' : 'LEGACY',
+        //     wrapSol: isInputSol,
+        //     unwrapSol,
+        //     inputAccount: isInputSol ? undefined : inputAccount?.toBase58(),
+        //     outputAccount: isOutputSol ? undefined : outputAccount?.toBase58()
+        //   }
+        // )
+        // if (!success) {
+        //   toastSubject.next({
+        //     title: 'Make Transaction Error',
+        //     description: 'Please try again, or contact us on discord',
+        //     status: 'error'
+        //   })
+        //   onCloseToast && onCloseToast()
+        //   return [];
+        // }
+        const ins = swapResponse.data.swapType === "BaseIn" ? swapBaseInAutoAccount({
+          programId: ALL_PROGRAM_ID.Router,
+          wallet: publicKey,
+          amount: new BN(swapResponse.data.inputAmount),
+          inputAccount,
+          outputAccount,
+          routeInfo: swapResponse,
+          poolKeys: poolsResp.data,
+        }) : swapBaseInAutoAccount({
+          programId: ALL_PROGRAM_ID.Router,
+          wallet: publicKey,
+          amount: new BN(swapResponse.data.outputAmount),
+          inputAccount,
+          outputAccount,
+          routeInfo: swapResponse,
+          poolKeys: poolsResp.data,
+        })
 
-        console.log(swapResponse)
         const amount = swapResponse.data.swapType === "BaseIn" 
           ? swapResponse.data.inputAmount 
           : swapResponse.data.outputAmount;
@@ -135,15 +151,16 @@ export const useSwapStore = createStore<SwapStore>(
         const rent = await raydium.connection.getMinimumBalanceForRentExemption(165)
         const rents = new Decimal(rent).mul(swapResponse.data.routePlan.length * 2 - 1);
         const solAmount = formatUnits(rents.toString(), SOL_DECIMAL).toString()
-        const swapTransactions = data || []
-        if (swapTransactions.length !== 1) throw new Error('invalid swap transaction'); //
-        const buf = Buffer.from(swapTransactions[0].transaction, 'base64')
-        let tx = VersionedTransaction.deserialize(buf as any);
-        const res = await Promise.all(tx.message.addressTableLookups.map(a => connection.getAddressLookupTable(a.accountKey)))
-        const alts = res.filter(r => r.value).map(r => r.value) as AddressLookupTableAccount[]
-        const swapIxs = TransactionMessage.decompile(tx.message, {
-          addressLookupTableAccounts: alts
-        }).instructions;
+
+        // const swapTransactions = data || []
+        // if (swapTransactions.length !== 1) throw new Error('invalid swap transaction'); //
+        // const buf = Buffer.from(swapTransactions[0].transaction, 'base64')
+        // let tx = VersionedTransaction.deserialize(buf as any);
+        // const res = await Promise.all(tx.message.addressTableLookups.map(a => connection.getAddressLookupTable(a.accountKey)))
+        // const alts = res.filter(r => r.value).map(r => r.value) as AddressLookupTableAccount[]
+        // const swapIxs = TransactionMessage.decompile(tx.message, {
+        //   addressLookupTableAccounts: alts
+        // }).instructions;
 
         const client = initComputerClient();
         const nonce = await client.getNonce(getUserMix())
@@ -154,9 +171,9 @@ export const useSwapStore = createStore<SwapStore>(
         const messageV0 = new TransactionMessage({
           payerKey: publicKey,
           recentBlockhash: nonce.nonce_hash,
-          instructions: [nonceIns, ...swapIxs,], // add additional instructions here
+          instructions: [nonceIns, ins, ...computeIns], // add additional instructions here
         }).compileToV0Message();
-        tx = new VersionedTransaction(messageV0);
+        const tx = new VersionedTransaction(messageV0);
         const memo = Buffer.from(tx.serialize()).toString('base64');
         const storage = await client.storageTx(memo);
         const trace = uniqueConversationID(storage.hash, "system call");
@@ -201,6 +218,7 @@ export const useSwapStore = createStore<SwapStore>(
          }
          return [req]
       } catch (e: any) {
+        console.error(e)
         txProps.onError?.()
         if (e.message !== 'tx failed')
           toastSubject.next({ txError: typeof e === 'string' ? new Error(e) : e, title: 'Swap', description: 'Send transaction failed' })
