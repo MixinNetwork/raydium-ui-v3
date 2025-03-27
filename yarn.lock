@@ -3510,15 +3510,15 @@
     semver "^7.5.4"
     uuid "^9.0.1"
 
-"@mixin.dev/mixin-node-sdk@7.3.4":
-  version "7.3.4"
-  resolved "https://registry.npmjs.org/@mixin.dev/mixin-node-sdk/-/mixin-node-sdk-7.3.4.tgz#a3174de1dc6689c05f8a529844938310331f770a"
-  integrity sha512-CgF/2oobRIhqoYiid4Iny3z5pxsXu7XIa0w4wywBsfid4WBMqnf3gAsckwj+GP8ZOGWY7kcagb9yGUtov1nRKA==
+"@mixin.dev/mixin-node-sdk@^7.3.6":
+  version "7.3.6"
+  resolved "https://registry.npmjs.org/@mixin.dev/mixin-node-sdk/-/mixin-node-sdk-7.3.6.tgz#128a485e3d16f7c51bc9b48465a1ceb175ff31b0"
+  integrity sha512-NZKCGT+q5IEa1BQE6SvvXBx5MoMukJpfbrB/L4yydnLfP0i6C6eb6a14u9FN7EQdCKnvli7mTUCd66FZNnMgPA==
   dependencies:
     "@noble/ciphers" "^1.0.0"
     "@noble/curves" "^1.2.0"
     "@noble/hashes" "^1.5.0"
-    axios "1.7.7"
+    axios "1.8.2"
     axios-retry "3.4.0"
     bignumber.js "^9.1.2"
     bs58 "^5.0.0"
@@ -8891,10 +8891,10 @@ axios@1.7.4:
     form-data "^4.0.0"
     proxy-from-env "^1.1.0"
 
-axios@1.7.7, axios@^1.2.4, axios@^1.4.0, axios@^1.6.0, axios@^1.6.2, axios@^1.6.4:
-  version "1.7.7"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-1.7.7.tgz#2f554296f9892a72ac8d8e4c5b79c14a91d0a47f"
-  integrity sha512-S4kL7XrjgBmvdGut0sN3yJxqYzrDOnivkBiN0OFs6hLiUam3UPvswUo0kqGyhqUZGEOytHyumEdXsAkgCOUf3Q==
+axios@1.8.2:
+  version "1.8.2"
+  resolved "https://registry.npmjs.org/axios/-/axios-1.8.2.tgz#fabe06e241dfe83071d4edfbcaa7b1c3a40f7979"
+  integrity sha512-ls4GYBm5aig9vWx8AWDSGLpnpDQRtWAfrjU+EuytuODrFBkqesN2RkOQCBzrA1RQNHw1SmRMSDDDSwzNAYQ6Rg==
   dependencies:
     follow-redirects "^1.15.6"
     form-data "^4.0.0"
@@ -8925,6 +8925,15 @@ axios@^1.1.3:
   version "1.6.8"
   resolved "https://registry.yarnpkg.com/axios/-/axios-1.6.8.tgz#66d294951f5d988a00e87a0ffb955316a619ea66"
   integrity sha512-v/ZHtJDU39mDpyBoFVkETcd/uNdxrWRrg3bKpOKzXFA6Bvqopts6ALSMU3y6ijYxbw2B+wPrIv46egTzJXCLGQ==
+  dependencies:
+    follow-redirects "^1.15.6"
+    form-data "^4.0.0"
+    proxy-from-env "^1.1.0"
+
+axios@^1.2.4, axios@^1.4.0, axios@^1.6.0, axios@^1.6.2, axios@^1.6.4:
+  version "1.7.7"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-1.7.7.tgz#2f554296f9892a72ac8d8e4c5b79c14a91d0a47f"
+  integrity sha512-S4kL7XrjgBmvdGut0sN3yJxqYzrDOnivkBiN0OFs6hLiUam3UPvswUo0kqGyhqUZGEOytHyumEdXsAkgCOUf3Q==
   dependencies:
     follow-redirects "^1.15.6"
     form-data "^4.0.0"
