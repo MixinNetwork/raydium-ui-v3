@@ -6,20 +6,21 @@ import {
   TickUtils,
   ApiV3PoolInfoConcentratedItem,
   PositionUtils,
-  LockClPositionLayoutV2
+  LockClPositionLayoutV2,
 } from '@raydium-io/raydium-sdk-v2'
 import shallow from 'zustand/shallow'
 import { PublicKey, Connection } from '@solana/web3.js'
 import Decimal from 'decimal.js'
-import BN from 'bn.js'
 import useSWR from 'swr'
 
 import useRefreshEpochInfo from '@/hooks/app/useRefreshEpochInfo'
-import { useAppStore, useTokenAccountStore, initTokenAccountSate, useTokenStore } from '@/store'
+import { useAppStore, useTokenAccountStore, initTokenAccountSate } from '@/store'
 import { useEvent } from '@/hooks/useEvent'
 import ToPublicKey from '@/utils/publicKey'
 import logMessage from '@/utils/log'
 import { getPdaIdCache } from '@/utils/pool/pdaCache'
+import { SOL_ASSET_ID } from '@/utils/constant'
+import { eq } from '@/utils/number'
 
 export type ClmmPosition = ReturnType<typeof PositionInfoLayout.decode> & { key?: string; slot: number }
 export type ClmmDataMap = Map<string, ClmmPosition[]>
@@ -95,8 +96,14 @@ export default function useClmmBalance({
   useRefreshEpochInfo()
 
   const balanceMints = useMemo(() => {
-    const tokenMap = useTokenStore.getState().tokenMap
-    return tokenAccountRawInfos.filter((acc) => acc.accountInfo.amount.eq(new BN(1)) && !tokenMap.has(acc.accountInfo.mint.toBase58()))
+    const balanceAddressMap = useAppStore.getState().balanceAddressMap
+    return tokenAccountRawInfos.filter((acc) => {
+      const asset = balanceAddressMap[acc.accountInfo.mint.toString()];
+      return asset && eq(asset.total_amount, "1") && 
+        asset.asset.chain_id === SOL_ASSET_ID &&
+        asset.asset.asset_id !== SOL_ASSET_ID &&
+        asset.asset.name.includes('Liquidity')
+    })
   }, [tokenAccountRawInfos])
 
   const allLockMints = useMemo(

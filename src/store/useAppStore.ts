@@ -9,7 +9,9 @@ import {
   JupTokenType,
   AvailabilityCheckAPI3,
   TxVersion,
-  TokenInfo
+  TokenInfo,
+  SOLMint,
+  WSOLMint
 } from '@raydium-io/raydium-sdk-v2'
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base'
 import { Wallet } from '@solana/wallet-adapter-react'
@@ -294,6 +296,7 @@ export const useAppStore = createStore<AppState>(
       }, {} as Record<string, UserAssetBalance>)
       const bs = Object.values(fbm).filter(b => b.address);
       const am = Object.fromEntries(bs.map(b => [b.address, b])) as Record<string, UserAssetBalance>
+      if (am[SOLMint.toString()] && !am[WSOLMint.toString()]) am[WSOLMint.toString()] = am[SOLMint.toString()]
       set({ balances: fbm, balanceAddressMap: am })
     },
     getComputerInfo: async () => {
