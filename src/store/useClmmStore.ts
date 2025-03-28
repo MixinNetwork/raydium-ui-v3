@@ -25,6 +25,7 @@ import {
   ClmmInstrument,
   mockV3CreatePoolInfo,
   WSOLMint,
+  addComputeBudget,
 } from '@raydium-io/raydium-sdk-v2'
 import { AddressLookupTableAccount, PublicKey, SystemProgram, TransactionMessage, VersionedTransaction } from '@solana/web3.js'
 import createStore from '@/store/createStore'
@@ -47,7 +48,7 @@ import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import { ComputerNonceResponse, ComputerSystemCallRequest, Token } from '@/types/computer'
 import { buildInvoiceWithEntries, buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema, computerEmptyExtra, buildAssetId } from '@/utils/mixin'
-import { attachInvoiceEntry, formatUnits, getInvoiceString, newMixinInvoice, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
+import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
 import { CREATE_POOL_RENT_SIZES, OPEN_POSITION_RENT_SIZES, OperationTypeSystemCall, SOL_ASSET_ID, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { initComputerClient } from '@/api/computer'
 
@@ -217,6 +218,8 @@ const clmmInitState = {
   slippage: 0.005
 }
 
+const client = MixinApi();
+
 export const useClmmStore = createStore<ClmmState>(
   (set, get) => ({
     ...clmmInitState,
@@ -363,7 +366,6 @@ export const useClmmStore = createStore<ClmmState>(
           checkCreateATAOwner: false,
           withMetadata: "create" as "create" | "no-create",
           getEphemeralSigners: wallet ? await getEphemeralSigners(wallet) : undefined,
-          computeBudgetConfig: createPoolBuildData ? undefined : computeBudgetConfig,
           txVersion,
         }
         let ownerTokenAccountA: PublicKey | null = null;
@@ -434,6 +436,12 @@ export const useClmmStore = createStore<ClmmState>(
         });
     
         txBuilder.addInstruction(insInfo);
+        
+        if (computeBudgetConfig) {
+          const ins = addComputeBudget(computeBudgetConfig);
+          txBuilder.addInstruction(ins);
+        }
+
         const buildData = await txBuilder.versionBuild({
           txVersion,
           extInfo: { ...insInfo.address, recentBlockHash: nonce.nonce_hash },
@@ -453,7 +461,6 @@ export const useClmmStore = createStore<ClmmState>(
           ? formatUnits(otherAmountMax, poolInfo.mintB.decimals).toString() 
           : formatUnits(baseAmount, poolInfo.mintB.decimals).toString();
         
-        const client = initComputerClient(); 
         const rentMap: Record<string, number> = {}  
         const sizes = Array.from(new Set([...CREATE_POOL_RENT_SIZES, ...OPEN_POSITION_RENT_SIZES]));
         const rents = await Promise.all(sizes.map(size => raydium.connection.getMinimumBalanceForRentExemption(size)))
@@ -473,17 +480,17 @@ export const useClmmStore = createStore<ClmmState>(
           const { transactions } = await createPoolBuildData.builder.sizeCheckBuildV0();
           if (transactions.length !== 1 || !poolNonce) throw new Error('invalid create pool transaction');
           transactions[0].message.recentBlockhash = poolNonce.nonce_hash;
-          const tx1 = Buffer.from(transactions[0].serialize()).toString('base64');
+          const tx1 = Buffer.from(transactions[0].serialize());
 
           const invoice = newMixinInvoice(computer);
           if (!invoice) throw new Error('computer connection failed');
-          const storage1 = await client.storageTx(tx1);
-          const trace = uniqueConversationID(storage1.hash, "system call");
+          const trace = uniqueConversationID(tx1.toString('hex'), "system call");
           const extra1 = buildComputerExtra(
             info.members.app_id, 
             OperationTypeSystemCall, 
-            buildSystemCallInvoiceExtra(account.id, trace, true, storage1.hash)
+            buildSystemCallInvoiceExtra(account.id, trace, true)
           )
+          attachStorageEntry(invoice, uniqueConversationID(trace, "storage"), tx1)
           attachInvoiceEntry(invoice, {
             trace_id: uniqueConversationID(trace, SOL_ASSET_ID),
             asset_id: SOL_ASSET_ID,
@@ -497,22 +504,26 @@ export const useClmmStore = createStore<ClmmState>(
             asset_id: XIN_ASSET_ID,
             amount: info.params.operation.price,
             extra: Buffer.from(extra1),
-            index_references: [0],
+            index_references: [0, 1],
             hash_references: []
           })
-          console.log(invoice)
+          const url1 = handleInvoiceSchema(getInvoiceString(invoice));
+          console.log(invoice, url1)
+          const scheme1 = await client.code.schemes(url1)
           const req1 = {
             trace: trace,
-            value: handleInvoiceSchema(getInvoiceString(invoice)),
+            value: `https://mixin.one/schemes/${scheme1.scheme_id}`,
           }
           reqs.push(req1);
         }
 
+        console.log(buildData.transaction)
         const { transactions: txs } = await buildData.builder.sizeCheckBuildV0();
         if (txs.length !== 1) throw new Error('invalid open position transaction');
+        console.log(txs[0])
         txs[0].message.recentBlockhash = nonce.nonce_hash;
         txs[0].sign(insInfo.signers);
-        const tx2 = Buffer.from(txs[0].serialize()).toString('base64');
+        const tx2 = Buffer.from(txs[0].serialize());
 
         let total2 = OPEN_POSITION_RENT_SIZES.reduce((prev, cur) => {
           const total = prev + rentMap[cur]
@@ -520,15 +531,22 @@ export const useClmmStore = createStore<ClmmState>(
         }, 0)
         total2 = Math.floor(total2 * 1.1)
 
-        const storage2 = await client.storageTx(tx2);
-        const trace2 = uniqueConversationID(storage2.hash, "system call");
+        const trace2 = uniqueConversationID(tx2.toString('hex'), "system call");
         const extra2 = buildComputerExtra(
           info.members.app_id, 
           OperationTypeSystemCall, 
-          buildSystemCallInvoiceExtra(account.id, trace2, false, storage2.hash)
+          buildSystemCallInvoiceExtra(account.id, trace2, false)
         )
         const invoice2 = buildInvoiceWithEntries(
           computer, 
+          {
+            trace_id: uniqueConversationID(trace2, "storage"),
+            asset_id: XIN_ASSET_ID,
+            amount: '',
+            extra: tx2,
+            index_references: [],
+            hash_references: []
+          }, 
           {
             trace_id: trace2,
             asset_id: XIN_ASSET_ID,
@@ -564,10 +582,12 @@ export const useClmmStore = createStore<ClmmState>(
             }
           ]
         )
-        console.log(invoice2)
+        const url2 = handleInvoiceSchema(getInvoiceString(invoice2));
+        console.log(invoice2, url2)
+        const scheme2 = await client.code.schemes(url2)
         reqs.push({
           trace: trace2,
-          value: handleInvoiceSchema(getInvoiceString(invoice2)),
+          value: `https://mixin.one/schemes/${scheme2.scheme_id}`,
         })
         return {
           requests: reqs,
@@ -648,8 +668,8 @@ export const useClmmStore = createStore<ClmmState>(
           addressLookupTableAccounts: alts
         }).instructions;
   
-        const client = initComputerClient();
-        const nonce = await client.getNonce(getUserMix())
+        const cc = initComputerClient();
+        const nonce = await cc.getNonce(getUserMix())
         const nonceIns = SystemProgram.nonceAdvance({
           noncePubkey: new PublicKey(nonce.nonce_address),
           authorizedPubkey: new PublicKey(info.payer)
@@ -661,13 +681,12 @@ export const useClmmStore = createStore<ClmmState>(
         }).compileToV0Message();
         const tx = new VersionedTransaction(messageV0);
 
-        const memo = Buffer.from(tx.serialize()).toString('base64');
-        const storage = await client.storageTx(memo);
-        const trace = uniqueConversationID(storage.hash, "system call");
+        const memo = Buffer.from(tx.serialize());
+        const trace = uniqueConversationID(memo.toString('hex'), "system call");
         const extra = buildComputerExtra(
           info.members.app_id, 
           OperationTypeSystemCall, 
-          buildSystemCallInvoiceExtra(account.id, trace, false, storage.hash)
+          buildSystemCallInvoiceExtra(account.id, trace, false)
         )
         const referencedEntries = [
           {
@@ -690,6 +709,14 @@ export const useClmmStore = createStore<ClmmState>(
         const invoice = buildInvoiceWithEntries(
           computer, 
           {
+            trace_id: uniqueConversationID(trace, "storage"),
+            asset_id: XIN_ASSET_ID,
+            amount: '',
+            extra: memo,
+            index_references: [],
+            hash_references: []
+          }, 
+          {
             trace_id: trace,
             asset_id: XIN_ASSET_ID,
             amount: info.params.operation.price,
@@ -698,10 +725,12 @@ export const useClmmStore = createStore<ClmmState>(
             hash_references: []
           }, referencedEntries
         )
-        console.log(invoice)
+        const url = handleInvoiceSchema(getInvoiceString(invoice));
+        console.log(invoice, url)
+        const scheme = await client.code.schemes(url)
         const req1 = {
           trace: trace,
-          value: handleInvoiceSchema(getInvoiceString(invoice)),
+          value: `https://mixin.one/schemes/${scheme.scheme_id}`,
         }
         return [req1]
       } catch(e) {

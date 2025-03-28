@@ -16,7 +16,6 @@ export const initComputerClient = (responseCallback?: (e: any) => void) => {
   });
 
   ins.interceptors.response.use(undefined, async (e: any) => {
-    if (e.response.status === 404) return Promise.resolve(undefined);
     responseCallback?.(e);
     return Promise.reject(e);
   });

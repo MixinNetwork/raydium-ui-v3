@@ -424,6 +424,7 @@ export default function CreatePosition() {
         const call = await client.fetchCall(requests[requests.length - 1].trace);
         if (call.state === 'done') {
           onNFTOpen()
+          onClose()
           clearInterval(timer);
         } else if (call.state === 'failed') {
           setIsSending(false);

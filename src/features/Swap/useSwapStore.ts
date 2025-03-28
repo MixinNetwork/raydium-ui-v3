@@ -13,7 +13,7 @@ import i18n from '@/i18n'
 import { fetchComputePrice } from '@/utils/tx/computeBudget'
 import { trimTailingZero } from '@/utils/numberish/formatter'
 import { initComputerClient } from '@/api/computer'
-import { formatUnits, getInvoiceString, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
+import { formatUnits, getInvoiceString, MixinApi, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
 import { buildComputerExtra, buildInvoiceWithEntries, buildSystemCallInvoiceExtra, computerEmptyExtra, handleInvoiceSchema } from '@/utils/mixin'
 import { OperationTypeSystemCall, SOL_ASSET_ID, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { ComputerSystemCallRequest } from '@/types/computer'
@@ -46,6 +46,8 @@ interface SwapStore {
   unWrapSolAct: (props: { amount: string; onClose?: () => void; onSent?: () => void; onError?: () => void }) => Promise<string | undefined>
   wrapSolAct: (amount: string) => Promise<string | undefined>
 }
+
+const client = MixinApi();
 
 export interface ComputeParams {
   inputMint: string
@@ -162,8 +164,8 @@ export const useSwapStore = createStore<SwapStore>(
         //   addressLookupTableAccounts: alts
         // }).instructions;
 
-        const client = initComputerClient();
-        const nonce = await client.getNonce(getUserMix())
+        const cc = initComputerClient();
+        const nonce = await cc.getNonce(getUserMix())
         const nonceIns = SystemProgram.nonceAdvance({
           noncePubkey: new PublicKey(nonce.nonce_address),
           authorizedPubkey: new PublicKey(info.payer)
@@ -174,16 +176,23 @@ export const useSwapStore = createStore<SwapStore>(
           instructions: [nonceIns, ins, ...computeIns], // add additional instructions here
         }).compileToV0Message();
         const tx = new VersionedTransaction(messageV0);
-        const memo = Buffer.from(tx.serialize()).toString('base64');
-        const storage = await client.storageTx(memo);
-        const trace = uniqueConversationID(storage.hash, "system call");
+        const memo = Buffer.from(tx.serialize());
+        const trace = uniqueConversationID(memo.toString("hex"), "system call");
         const extra = buildComputerExtra(
           info.members.app_id, 
           OperationTypeSystemCall, 
-          buildSystemCallInvoiceExtra(account.id, trace, false, storage.hash)
+          buildSystemCallInvoiceExtra(account.id, trace, false)
         )
         const invoice = buildInvoiceWithEntries(
           computer, 
+          {
+            trace_id: uniqueConversationID(trace, "storage"),
+            asset_id: XIN_ASSET_ID,
+            amount: '',
+            extra: memo,
+            index_references: [],
+            hash_references: []
+          }, 
           {
             trace_id: trace,
             asset_id: XIN_ASSET_ID,
@@ -211,12 +220,14 @@ export const useSwapStore = createStore<SwapStore>(
             },
           ]
         )
-         console.log(invoice)
-         const req = {
-           trace: trace,
-           value: handleInvoiceSchema(getInvoiceString(invoice)),
-         }
-         return [req]
+        const url = handleInvoiceSchema(getInvoiceString(invoice));
+        console.log(invoice, url)
+        const scheme = await client.code.schemes(url)
+        const req = {
+          trace: trace,
+          value: `https://mixin.one/schemes/${scheme.scheme_id}`,
+        }
+        return [req]
       } catch (e: any) {
         console.error(e)
         txProps.onError?.()

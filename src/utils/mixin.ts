@@ -2,7 +2,7 @@ import { parse, stringify } from "uuid";
 import md5 from 'md5';
 import BigNumber from 'bignumber.js';
 import { OperationTypeAddUser, SOL_ASSET_ID, XIN_ASSET_ID } from "./constant";
-import { attachInvoiceEntry, base64RawURLEncode, buildMixAddress, InvoiceEntry, newMixinInvoice } from "@mixin.dev/mixin-node-sdk";
+import { attachInvoiceEntry, attachStorageEntry, base64RawURLEncode, buildMixAddress, InvoiceEntry, newMixinInvoice } from "@mixin.dev/mixin-node-sdk";
 import { ComputerInfoResponse } from "@/types/computer";
 import { add } from "./number";
 
@@ -43,12 +43,12 @@ export const buildComputerExtra = (app_id: string, operation: number, extra: Buf
   return base64RawURLEncode(data)
 }
 
-export const buildSystemCallInvoiceExtra = (uid: string, cid: string, skipPostProcess: boolean, ref: string) => {
+export const buildSystemCallInvoiceExtra = (uid: string, cid: string, skipPostProcess: boolean) => {
   const flag = skipPostProcess ? 1 : 0;
   const ib = bigNumberToBytes(BigNumber(uid));
   const cb = parse(cid);
   // @ts-ignore
-  return Buffer.concat([ib, cb, Buffer.from([flag]), Buffer.from(ref, 'hex')])
+  return Buffer.concat([ib, cb, Buffer.from([flag])])
 }
 
 export const handleComputerRegisterSchema = (info: ComputerInfoResponse, mix: string) => {
@@ -64,9 +64,10 @@ export const handleComputerRegisterSchema = (info: ComputerInfoResponse, mix: st
 
 export const handleInvoiceSchema = (invoice: string) => `https://mixin.one/pay/${invoice}`;
 
-export const buildInvoiceWithEntries = (recipient: string, feeEntry: InvoiceEntry, entries: InvoiceEntry[]) => {
+export const buildInvoiceWithEntries = (recipient: string, storageEntry: InvoiceEntry, feeEntry: InvoiceEntry, entries: InvoiceEntry[]) => {
   const invoice = newMixinInvoice(recipient);
   if (!invoice) throw new Error('invalid invoice recipient!');
+  attachStorageEntry(invoice, storageEntry.trace_id, storageEntry.extra)
 
   let xinAmount = '0'
   const assetEntry = entries.reduce((prev, cur) => {
@@ -81,16 +82,14 @@ export const buildInvoiceWithEntries = (recipient: string, feeEntry: InvoiceEntr
     return prev;
   }, {} as Record<string, InvoiceEntry>);
 
-  entries = Object.values(assetEntry) as InvoiceEntry[];
-  if (xinAmount !== '0') feeEntry.amount = add(feeEntry.amount, xinAmount).toFixed(8, BigNumber.ROUND_CEIL);
-
-  feeEntry.index_references = entries.map((_, i) => i).slice(-2)
-  entries.forEach((entry, index) => {
+  Object.values(assetEntry).forEach((entry) => {
     entry.amount = BigNumber(entry.amount).toFixed(8, BigNumber.ROUND_CEIL);
-    if (index == entries.length - 1) entry.index_references = entries.map((_, i) => i).slice(0, -2);
     attachInvoiceEntry(invoice, entry)
   })
 
+  if (xinAmount !== '0') 
+    feeEntry.amount = add(feeEntry.amount, xinAmount).toFixed(8, BigNumber.ROUND_CEIL);
+  feeEntry.index_references = invoice.entries.map((_, i) => i)
   attachInvoiceEntry(invoice, feeEntry)
   return invoice
 }
