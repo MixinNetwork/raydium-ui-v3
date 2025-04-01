@@ -409,7 +409,7 @@ export const useClmmStore = createStore<ClmmState>(
             checkCreateATAOwner: params.checkCreateATAOwner,
           });
         if (_ownerTokenAccountB) ownerTokenAccountB = _ownerTokenAccountB;
-        if (mintAUseSOLBalance || bnAmountB.isZero()) txBuilder.addInstruction(_tokenAccountBInstruction || {});
+        if (mintBUseSOLBalance || bnAmountB.isZero()) txBuilder.addInstruction(_tokenAccountBInstruction || {});
     
         if (!ownerTokenAccountA || !ownerTokenAccountB)
           throw new Error(`cannot found target token accounts tokenAccounts: ${poolInfo.mintA.address} ${ownerTokenAccountA?.toBase58()}, ${poolInfo.mintB.address} ${ownerTokenAccountB?.toBase58()}`);
