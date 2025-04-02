@@ -151,7 +151,7 @@ export const useSwapStore = createStore<SwapStore>(
         if (!balance) throw new Error('invalid input')
 
         const rent = await raydium.connection.getMinimumBalanceForRentExemption(165)
-        const rents = new Decimal(rent).mul(swapResponse.data.routePlan.length * 2 - 1);
+        const rents = new Decimal(rent).mul(swapResponse.data.routePlan.length * 2);
         const solAmount = formatUnits(rents.toString(), SOL_DECIMAL).toString()
 
         // const swapTransactions = data || []
