@@ -316,8 +316,10 @@ export const useAppStore = createStore<AppState>(
     getComputerAccount: async () => {
       const { user, getUserMix } = get();
       if (!user) return;
-      const account = await client.fetchUser(getUserMix());
-      if (account) set({ account, connected: true, publicKey: new PublicKey(account.chain_address) });
+      try {
+        const account = await client.fetchUser(getUserMix());
+        if (account) set({ account, connected: true, publicKey: new PublicKey(account.chain_address) });
+      } catch {}
     },
     getComputerRecipient: () => {
       const { info } = get();
