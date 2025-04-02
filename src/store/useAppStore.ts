@@ -285,6 +285,13 @@ export const useAppStore = createStore<AppState>(
         }
         return prev
       }, {} as Record<string, UserAssetBalanceWithoutAsset>)
+      if (!bm[SOL_ASSET_ID]) bm[SOL_ASSET_ID] = {
+        asset_id: SOL_ASSET_ID,
+        total_amount: "0",
+        outputs: [],
+        address: "11111111111111111111111111111111"
+      }
+
       const assets = await client.safe.fetchAssets(Object.keys(bm));
       const fbm = assets.reduce((prev, cur) => {
         const b = bm[cur.asset_id]
@@ -296,7 +303,10 @@ export const useAppStore = createStore<AppState>(
       }, {} as Record<string, UserAssetBalance>)
       const bs = Object.values(fbm).filter(b => b.address);
       const am = Object.fromEntries(bs.map(b => [b.address, b])) as Record<string, UserAssetBalance>
-      if (am[SOLMint.toString()] && !am[WSOLMint.toString()]) am[WSOLMint.toString()] = am[SOLMint.toString()]
+      if (am[SOLMint.toString()] && !am[WSOLMint.toString()]) am[WSOLMint.toString()] = {
+        ...am[SOLMint.toString()],
+        hide: true
+      }
       set({ balances: fbm, balanceAddressMap: am })
     },
     getComputerInfo: async () => {

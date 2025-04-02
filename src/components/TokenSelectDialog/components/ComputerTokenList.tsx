@@ -18,7 +18,7 @@ import { isValidPublicKey } from '@/utils/publicKey'
 import { formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import useTokenPrice, { TokenPrice } from '@/hooks/token/useTokenPrice'
 import { SOL_ASSET_ID } from '@/utils/constant'
-import { Token, UserAssetBalance } from '@/types/computer'
+import { Token } from '@/types/computer'
 
 const perPage = 30
 
@@ -36,11 +36,7 @@ export default forwardRef<
   }
 >(function TokenList({ onOpenTokenList, isDialogOpen: isOpen, onChooseToken, filterFn }, ref) {
   const { t } = useTranslation()
-  const mixinTokenAccountMap = useAppStore((s) => Object.values(s.balances).reduce((prev, cur) => {
-    if (!cur.address) return prev;
-    prev[cur.address] = cur;
-    return prev;
-  }, {} as Record<string, UserAssetBalance>));
+  const mixinTokenAccountMap = useAppStore((s) => s.balanceAddressMap);
   const computerAssetAddressMap = useTokenStore((s) => s.computerAssetAddressMap)
   const tokenList = useTokenStore((s) => s.displayTokenList)
   const orgTokenMap = useTokenStore((s) => s.tokenMap)
@@ -92,6 +88,7 @@ export default forwardRef<
     console.log(mixinTokenAccountMap)
     const list = Object.values(mixinTokenAccountMap).reduce((prev, balance) => {
       if (
+        balance?.hide ||
         !balance.address || 
         (balance.asset.chain_id !== SOL_ASSET_ID && !computerAssetAddressMap[balance.address])
       ) return prev;

@@ -107,7 +107,8 @@ export const useTokenStore = createStore<TokenStore>(
   (set, get) => ({
     ...initTokenSate,
     getComputerAssets: async () => {
-      const { getMixinClient } = useAppStore.getState()
+      const { getMixinClient, user } = useAppStore.getState()
+      if (!user) return;
       const assets = await client.fetchAssets();
       const { computerAssets: current } = get();
       if (assets.length > current.length) {

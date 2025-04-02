@@ -78,6 +78,7 @@ export interface UserAssetBalanceWithoutAsset {
 
 export interface UserAssetBalance extends UserAssetBalanceWithoutAsset{
   asset: Asset;
+  hide?: boolean;
 }
 
 export interface Token {
