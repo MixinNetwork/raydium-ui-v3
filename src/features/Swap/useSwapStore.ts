@@ -1,11 +1,11 @@
 import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram } from '@solana/web3.js'
 import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget } from '@raydium-io/raydium-sdk-v2'
 import BN from 'bn.js'
+import BigNumber from 'bignumber.js';
 import { createStore, useAppStore, useTokenStore } from '@/store'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
 import { txStatusSubject } from '@/hooks/toast/useTxStatus'
 import { ApiSwapV1OutSuccess } from './type'
-import { isSolWSol } from '@/utils/token'
 import axios from '@/api/axios'
 import Decimal from 'decimal.js'
 import { TxCallbackProps } from '@/types/tx'
@@ -13,10 +13,11 @@ import i18n from '@/i18n'
 import { fetchComputePrice } from '@/utils/tx/computeBudget'
 import { trimTailingZero } from '@/utils/numberish/formatter'
 import { initComputerClient } from '@/api/computer'
-import { formatUnits, getInvoiceString, MixinApi, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
-import { buildComputerExtra, buildInvoiceWithEntries, buildSystemCallInvoiceExtra, computerEmptyExtra, handleInvoiceSchema } from '@/utils/mixin'
+import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
+import { buildComputerExtra, buildSystemCallInvoiceExtra, computerEmptyExtra, handleInvoiceSchema } from '@/utils/mixin'
 import { OperationTypeSystemCall, SOL_ASSET_ID, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { ComputerSystemCallRequest } from '@/types/computer'
+import { add } from '@/utils/number'
 
 const getSwapComputePrice = async () => {
   const transactionFee = useAppStore.getState().getPriorityFee()
@@ -153,6 +154,8 @@ export const useSwapStore = createStore<SwapStore>(
         const rent = await raydium.connection.getMinimumBalanceForRentExemption(165)
         const rents = new Decimal(rent).mul(swapResponse.data.routePlan.length * 2);
         const solAmount = formatUnits(rents.toString(), SOL_DECIMAL).toString()
+        const cc = initComputerClient();
+        const fee = await cc.getFeeOnXin(solAmount)
 
         // const swapTransactions = data || []
         // if (swapTransactions.length !== 1) throw new Error('invalid swap transaction'); //
@@ -164,7 +167,6 @@ export const useSwapStore = createStore<SwapStore>(
         //   addressLookupTableAccounts: alts
         // }).instructions;
 
-        const cc = initComputerClient();
         const nonce = await cc.getNonce(getUserMix())
         const nonceIns = SystemProgram.nonceAdvance({
           noncePubkey: new PublicKey(nonce.nonce_address),
@@ -176,50 +178,33 @@ export const useSwapStore = createStore<SwapStore>(
           instructions: [nonceIns, ins, ...computeIns], // add additional instructions here
         }).compileToV0Message();
         const tx = new VersionedTransaction(messageV0);
-        const memo = Buffer.from(tx.serialize());
-        const trace = uniqueConversationID(memo.toString("hex"), "system call");
+        const txBuf = Buffer.from(tx.serialize());
+        const trace = uniqueConversationID(txBuf.toString("hex"), "system call");
         const extra = buildComputerExtra(
           info.members.app_id, 
           OperationTypeSystemCall, 
-          buildSystemCallInvoiceExtra(account.id, trace, false)
+          buildSystemCallInvoiceExtra(account.id, trace, false, fee.fee_id)
         )
-        const invoice = buildInvoiceWithEntries(
-          computer, 
-          {
-            trace_id: uniqueConversationID(trace, "storage"),
-            asset_id: XIN_ASSET_ID,
-            amount: '',
-            extra: memo,
-            index_references: [],
-            hash_references: []
-          }, 
-          {
-            trace_id: trace,
-            asset_id: XIN_ASSET_ID,
-            amount: info.params.operation.price,
-            extra: Buffer.from(extra),
-            index_references: [],
-            hash_references: []
-          }, 
-          [
-            {
-              trace_id: uniqueConversationID(uniqueConversationID(trace, SOL_ASSET_ID), "rent"),
-              asset_id: SOL_ASSET_ID,
-              amount: solAmount,
-              extra: computerEmptyExtra,
-              index_references: [],
-              hash_references: []
-            },
-            {
-              trace_id: uniqueConversationID(trace, balance.asset_id),
-              asset_id: balance.asset_id,
-              amount: tokenAmount,
-              extra: computerEmptyExtra,
-              index_references: [],
-              hash_references: []
-            },
-          ]
-        )
+
+        const invoice = newMixinInvoice(computer);
+        if (!invoice) throw new Error('invalid invoice recipient!');
+        attachStorageEntry(invoice, uniqueConversationID(trace, "storage"), txBuf)
+        attachInvoiceEntry(invoice, {
+          trace_id: uniqueConversationID(trace, balance.asset_id),
+          asset_id: balance.asset_id,
+          amount: tokenAmount,
+          extra: computerEmptyExtra,
+          index_references: [],
+          hash_references: []
+        })
+        attachInvoiceEntry(invoice, {
+          trace_id: trace,
+          asset_id: XIN_ASSET_ID,
+          amount: add(info.params.operation.price, fee.xin_amount).toFixed(8, BigNumber.ROUND_CEIL),
+          extra: Buffer.from(extra),
+          index_references: [0, 1],
+          hash_references: []
+        })
         const url = handleInvoiceSchema(getInvoiceString(invoice));
         console.log(invoice, url)
         const scheme = await client.code.schemes(url)

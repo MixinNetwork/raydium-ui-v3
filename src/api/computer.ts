@@ -1,6 +1,6 @@
 import axios, { type AxiosResponse } from 'axios';
 import axiosRetry from 'axios-retry';
-import type { ComputerAssetResponse, ComputerInfoResponse, ComputerNonceResponse, ComputerStorageResponse, ComputerSystemCallResponse, ComputerUserResponse } from '@/types/computer';
+import type { ComputerAssetResponse, ComputerFeeResponse, ComputerInfoResponse, ComputerNonceResponse, ComputerSystemCallResponse, ComputerUserResponse } from '@/types/computer';
 import { getEnvConfig } from '@/utils/constant';
 
 axios.defaults.headers.post['Content-Type'] = 'application/json';
@@ -34,7 +34,7 @@ export const initComputerClient = (responseCallback?: (e: any) => void) => {
     fetchCall: (id: string): Promise<ComputerSystemCallResponse> => ins.get(`/system_calls/${id}`),
 
     deployAssets: (assets: string[]) => ins.post('/deployed_assets', { assets }),
-    getNonce: (mix: string): Promise<ComputerNonceResponse> => ins.post('nonce_accounts', { mix }),
-    storageTx: (tx: string): Promise<ComputerStorageResponse> => ins.post("/storages", { transaction: tx })
+    getNonce: (mix: string): Promise<ComputerNonceResponse> => ins.post('/nonce_accounts', { mix }),
+    getFeeOnXin: (amount: string): Promise<ComputerFeeResponse> => ins.post('/fee', { sol_amount: amount }),
   };
 };

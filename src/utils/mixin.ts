@@ -43,12 +43,14 @@ export const buildComputerExtra = (app_id: string, operation: number, extra: Buf
   return base64RawURLEncode(data)
 }
 
-export const buildSystemCallInvoiceExtra = (uid: string, cid: string, skipPostProcess: boolean) => {
+export const buildSystemCallInvoiceExtra = (uid: string, cid: string, skipPostProcess: boolean, fid?: string) => {
   const flag = skipPostProcess ? 1 : 0;
   const ib = bigNumberToBytes(BigNumber(uid));
   const cb = parse(cid);
+  const data = [ib, cb, Buffer.from([flag])];
+  if (fid) data.push(parse(fid))
   // @ts-ignore
-  return Buffer.concat([ib, cb, Buffer.from([flag])])
+  return Buffer.concat(data)
 }
 
 export const handleComputerRegisterSchema = (info: ComputerInfoResponse, mix: string) => {

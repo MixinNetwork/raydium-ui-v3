@@ -39,8 +39,9 @@ export interface ComputerNonceResponse {
   nonce_hash: string;
 }
 
-export interface ComputerStorageResponse {
-  hash: string;
+export interface ComputerFeeResponse {
+  fee_id: string;
+  xin_amount: string;
 }
 
 export interface ComputerSystemCallRequest {
