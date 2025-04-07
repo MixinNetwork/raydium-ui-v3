@@ -675,7 +675,7 @@ export const useClmmStore = createStore<ClmmState>(
           authorizedPubkey: new PublicKey(info.payer)
         })
         const messageV0 = new TransactionMessage({
-          payerKey: publicKey,
+          payerKey: new PublicKey(info.payer),
           recentBlockhash: nonce.nonce_hash,
           instructions: [nonceIns, ...swapIxs,],
         }).compileToV0Message();

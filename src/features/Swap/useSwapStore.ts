@@ -171,7 +171,7 @@ export const useSwapStore = createStore<SwapStore>(
           authorizedPubkey: new PublicKey(info.payer)
         })
         const messageV0 = new TransactionMessage({
-          payerKey: publicKey,
+          payerKey: new PublicKey(info.payer),
           recentBlockhash: nonce.nonce_hash,
           instructions: [nonceIns, ins, ...computeIns], // add additional instructions here
         }).compileToV0Message();
