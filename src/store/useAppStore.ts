@@ -295,7 +295,11 @@ export const useAppStore = createStore<AppState>(
       const assets = await client.safe.fetchAssets(Object.keys(bm));
       const fbm = assets.reduce((prev, cur) => {
         const b = bm[cur.asset_id]
-        const v: UserAssetBalance = { ...b, asset: cur }
+        const v: UserAssetBalance = { ...b, asset: {
+          ...cur,
+          name: cur.display_name,
+          symbol: cur.display_symbol,
+        } }
         if (cur.chain_id === SOL_ASSET_ID) 
           v.address = cur.asset_key;
         prev[cur.asset_id] = v;

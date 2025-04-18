@@ -122,7 +122,11 @@ export const useTokenStore = createStore<TokenStore>(
         const mas = await client.safe.fetchAssets(ids);
         const fas = mas.map((a, i) => ({
           ...assets[mp[a.asset_id]],
-          asset: a
+          asset: {
+            ...a,
+            name: a.display_name,
+            symbol: a.display_symbol
+          }
         }));
 
         const addressMap = fas.reduce((prev, cur) => {
