@@ -13,9 +13,9 @@ import i18n from '@/i18n'
 import { fetchComputePrice } from '@/utils/tx/computeBudget'
 import { trimTailingZero } from '@/utils/numberish/formatter'
 import { initComputerClient } from '@/api/computer'
-import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
+import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, uniqueConversationID, checkSystemCallSize } from '@mixin.dev/mixin-node-sdk'
 import { buildComputerExtra, buildSystemCallInvoiceExtra, computerEmptyExtra, handleInvoiceSchema } from '@/utils/mixin'
-import { OperationTypeSystemCall, SOL_ASSET_ID, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
+import { OperationTypeSystemCall, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { ComputerSystemCallRequest } from '@/types/computer'
 import { add } from '@/utils/number'
 
@@ -179,6 +179,10 @@ export const useSwapStore = createStore<SwapStore>(
         }).compileToV0Message();
         const tx = new VersionedTransaction(messageV0);
         const txBuf = Buffer.from(tx.serialize());
+        const oversized = checkSystemCallSize(txBuf);
+        if (oversized) 
+          toastSubject.next({ status: "error", description: "Transaction too long", duration: null });
+
         const trace = uniqueConversationID(txBuf.toString("hex"), "system call");
         const extra = buildComputerExtra(
           info.members.app_id, 
