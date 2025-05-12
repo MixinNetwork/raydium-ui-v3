@@ -40,6 +40,7 @@ import { useCreateMarketStore } from '@/store'
 
 import Decimal from 'decimal.js'
 import dayjs from 'dayjs'
+import { Token } from '@/types/computer'
 
 export default function Initialize({ isAmmV4 }: { isAmmV4: boolean }) {
   const { t } = useTranslation()
@@ -140,7 +141,8 @@ export default function Initialize({ isAmmV4 }: { isAmmV4: boolean }) {
   )
 
   const handleSelectToken = useCallback(
-    (token: TokenInfo | ApiV3Token, side?: 'input' | 'output') => {
+    (t: Token | TokenInfo | ApiV3Token, side?: 'input' | 'output') => {
+      const token = 'info' in t ? t.info : t;
       if (side === 'input') {
         setInputMint(token.address)
         setOutputMint((mint) => (token.address === mint ? '' : mint))

@@ -19,7 +19,7 @@ import useTokenPrice from '@/hooks/token/useTokenPrice'
 import { useEvent } from '@/hooks/useEvent'
 import BalanceWalletIcon from '@/icons/misc/BalanceWalletIcon'
 import ChevronDownIcon from '@/icons/misc/ChevronDownIcon'
-import { useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
+import { useAppStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { trimTrailZero, formatCurrency, detectedSeparator } from '@/utils/numberish/formatter'
 
@@ -31,12 +31,17 @@ import TokenUnknownAddDialog from './TokenSelectDialog/components/TokenUnknownAd
 import TokenFreezeDialog from './TokenSelectDialog/components/TokenFreezeDialog'
 import { TokenListHandles } from './TokenSelectDialog/components/TokenList'
 import useResponsive from '@/hooks/useResponsive'
+import { UserAssetBalance, Token } from '@/types/computer'
 
 export const DEFAULT_SOL_RESERVER = 0.01
 export interface InputActionRef {
   refreshPrice: () => void
 }
 export interface TokenInputProps extends Pick<TokenSelectDialogProps, 'filterFn'> {
+  fromMixin?: boolean
+  fromComputer?: boolean
+  mergeComputer?: boolean
+
   id?: string
   name?: string
   /**
@@ -65,6 +70,8 @@ export interface TokenInputProps extends Pick<TokenSelectDialogProps, 'filterFn'
   readonly?: boolean
   loading?: boolean
 
+  balance?: UserAssetBalance;
+
   /** default is empty string */
   value?: string
 
@@ -92,7 +99,7 @@ export interface TokenInputProps extends Pick<TokenSelectDialogProps, 'filterFn'
   topBlockSx?: StackProps
   onChange?: (val: string) => void
   /** for library:fomik  */
-  onTokenChange?: (token: TokenInfo | ApiV3Token) => void
+  onTokenChange?: (token: Token | TokenInfo | ApiV3Token) => void
   onFocus?: () => void
 
   defaultUnknownToken?: TokenInfo
@@ -126,6 +133,7 @@ function TokenInput(props: TokenInputProps) {
     filterFn,
     topLeftLabel,
     readonly,
+    balance,
     value: inputValue,
     loading,
     width,
@@ -133,10 +141,15 @@ function TokenInput(props: TokenInputProps) {
     ctrSx,
     sx,
     defaultUnknownToken,
-    actionRef
+    actionRef,
+    fromMixin = false,
+    fromComputer = false,
+    mergeComputer = false,
   } = props
   const { isMobile } = useResponsive()
+  const balanceAddressMap = useAppStore((s) => s.balanceAddressMap)
   const setExtraTokenListAct = useTokenStore((s) => s.setExtraTokenListAct)
+  const computerAssetMap = useTokenStore((s) => s.computerAssetAddressMap)
   const whiteListMap = useTokenStore((s) => s.whiteListMap)
   const { colorMode } = useColorMode()
   const isLight = colorMode === 'light'
@@ -169,12 +182,12 @@ function TokenInput(props: TokenInputProps) {
   })
   const value = shakeValueDecimal(inputValue, token?.decimals)
   const price = tokenPrice[token?.address || '']?.value
-  const totalPrice = price && value ? new Decimal(price ?? 0).mul(value).toString() : ''
 
   // balance
-  const getTokenBalanceUiAmount = useTokenAccountStore((s) => s.getTokenBalanceUiAmount)
-  const balanceInfo = getTokenBalanceUiAmount({ mint: token?.address || '', decimals: token?.decimals })
-  const balanceAmount = balanceInfo.amount
+  const balanceAmount = token && balanceAddressMap[token.address] 
+    ? new Decimal(balanceAddressMap[token.address].total_amount) 
+    : new Decimal(0)
+  const totalPrice = new Decimal(value || 0).mul(balance?.asset?.price_usd || 0)
   const balanceMaxString = hideBalance
     ? null
     : trimTrailZero(balanceAmount.mul(maxMultiplier || 1).toFixed(token?.decimals ?? 6, Decimal.ROUND_FLOOR))
@@ -221,24 +234,27 @@ function TokenInput(props: TokenInputProps) {
   })
 
   const isUnknownToken = useEvent((token: TokenInfo) => {
+    const isComputer = computerAssetMap[token.address];
     const isUnknown = !token.type || token.type === 'unknown' || token.tags.includes('unknown')
     const isTrusted = isUnknown && !!tokenMap.get(token.address)?.userAdded
     const isUserAddedTokenEnable = displayTokenSettings.userAdded
-    return isUnknown && (!isTrusted || !isUserAddedTokenEnable)
+    return isUnknown && (!isTrusted || !isUserAddedTokenEnable) && !isComputer;
   })
 
   const isFreezeToken = useEvent((token: TokenInfo | ApiV3Token) => {
     return token?.tags.includes('hasFreeze') && !whiteListMap.has(token.address)
   })
 
-  const handleSelectToken = useEvent((token: TokenInfo) => {
-    const isFreeze = isFreezeToken(token)
+  const handleSelectToken = useEvent((token: TokenInfo | Token) => {
+    const fromMixn = 'info' in token
+    const t = fromMixn ? token.info : token
+    const isFreeze = isFreezeToken(t)
     if (isFreeze) {
-      setFreezeToken(token)
+      setFreezeToken(t)
     }
-    const shouldShowUnknownTokenConfirm = isUnknownToken(token)
-    if (shouldShowUnknownTokenConfirm) {
-      setUnknownToken(token)
+    const shouldShowUnknownTokenConfirm = isUnknownToken(t)
+    if (!fromMixn && shouldShowUnknownTokenConfirm) {
+      setUnknownToken(t)
       onOpenUnknownTokenConfirm()
       return
     }
@@ -431,7 +447,7 @@ function TokenInput(props: TokenInputProps) {
           <Text textAlign="right">~{formatCurrency(totalPrice, { symbol: '$', maximumDecimalTrailingZeroes: 5 })}</Text>
         </GridItem>
       </Grid>
-      <TokenSelectDialog isOpen={isOpen} onClose={onClose} onSelectValue={handleSelectToken} filterFn={filterFn} ref={tokenListRef} />
+      <TokenSelectDialog fromMixin={fromMixin} fromComputer={fromComputer} mergeComputer={mergeComputer} isOpen={isOpen} onClose={onClose} onSelectValue={handleSelectToken} filterFn={filterFn} ref={tokenListRef} />
       {unknownToken !== undefined && (
         <TokenUnknownAddDialog
           isOpen={isOpenUnknownTokenConfirm}

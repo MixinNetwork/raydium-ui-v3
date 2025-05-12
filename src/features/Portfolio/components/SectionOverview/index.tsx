@@ -34,34 +34,11 @@ export default function SectionOverview() {
 
   const { data: clmmPoolAssets, totalUSD: totalClmmPosition, clmmBalanceByMint } = useClmmPortfolioData({ type: AssetType.CONCENTRATED })
   const {
-    data: standardPoolList,
     standardPoolListByMint,
     totalUSD: totalStandardPosition
   } = useAllStandardPoolPosition({ type: AssetType.STANDARD })
 
   const productiveBalance = totalClmmPosition.add(totalStandardPosition).toString()
-
-  const { activeStakePools } = useFetchStakePools({})
-  const stakingFarm = activeStakePools.find((p) => p.lpMint.address === RAYMintStr)
-  const { lpBasedData } = useFarmPositions({})
-  const v1Vault = lpBasedData.get(RAYMintStr)?.data.find((d) => d.version === 'V1' && !new Decimal(d.lpAmount).isZero())
-  const v1FarmBalance = useFetchFarmBalance({
-    shouldFetch: !!(v1Vault && new Decimal(v1Vault.lpAmount).gt(0)),
-    farmInfo: stakingFarm,
-    ledgerKey: v1Vault ? new PublicKey(v1Vault.userVault) : undefined
-  })
-
-  const ataFarmBalance = useFetchFarmBalance({
-    farmInfo: stakingFarm
-  })
-  const stakingRay = ataFarmBalance.hasDeposited || v1FarmBalance.deposited === '0' ? ataFarmBalance : v1FarmBalance
-
-  const stakedRayBalance = {
-    key: 'Staked Ray',
-    value: new Decimal(stakingRay.deposited || 0).mul(tokenPrices[RAYMintStr]?.value || 0).toString(),
-    type: AssetType.STAKEDRAY,
-    percentage: 100
-  }
 
   const tokenAssetsNew = useMemo(() => {
     const total = { ...clmmBalanceByMint }
@@ -89,7 +66,7 @@ export default function SectionOverview() {
       </Heading>
       <SimpleGrid templateColumns={['', '1fr 1fr']} gap={[3, 8]} overflow={['scroll']} mx={[-5, 0]} px={[5, 0]} scrollSnapType={'x'}>
         <PortfolioInfo
-          poolAssets={[...standardPoolList, ...clmmPoolAssets, stakedRayBalance]}
+          poolAssets={[...clmmPoolAssets]}
           mobileAssets={[
             {
               key: 'CLMM',
@@ -97,18 +74,6 @@ export default function SectionOverview() {
               percentage: 100,
               type: AssetType.CONCENTRATED
             },
-            {
-              key: 'Standard',
-              value: totalStandardPosition.toString(),
-              percentage: 100,
-              type: AssetType.STANDARD
-            },
-            {
-              key: 'Staked RAY',
-              value: stakedRayBalance.value,
-              percentage: 100,
-              type: AssetType.STAKEDRAY
-            }
           ]}
           tokenAssets={tokenAssetsNew}
         />

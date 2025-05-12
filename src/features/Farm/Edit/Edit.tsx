@@ -38,6 +38,7 @@ import useFetchRpcClmmInfo from '@/hooks/pool/clmm/useFetchRpcClmmInfo'
 import useFetchFarmInfoByRpc from '@/hooks/farm/useFetchFarmInfoByRpc'
 import { TxCallbackProps } from '@/types/tx'
 import { BN } from 'bn.js'
+import { Token } from '@/types/computer'
 
 interface QueryParams {
   farmId?: string
@@ -215,7 +216,8 @@ export default function FarmEdit() {
     handleCheckRemainRewardsCount()
   })
 
-  const tokenFilterFn = useEvent((token: TokenInfo, escapeExistMint?: string) => {
+  const tokenFilterFn = useEvent((t: Token | TokenInfo, escapeExistMint?: string) => {
+    const token = 'info' in t ? t.info : t;
     let isClmmRewardValid = true
     const existedTokens = new Set([
       ...rewardData.map((r) => r.mint.address),

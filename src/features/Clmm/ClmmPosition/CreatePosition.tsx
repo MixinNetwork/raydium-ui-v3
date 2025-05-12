@@ -10,7 +10,7 @@ import { AprKey } from '@/hooks/pool/type'
 import useFetchPoolById from '@/hooks/pool/useFetchPoolById'
 import useTokenPrice from '@/hooks/token/useTokenPrice'
 import usePrevious from '@/hooks/usePrevious'
-import { useAppStore, useClmmStore, useTokenAccountStore } from '@/store'
+import { useAppStore, useClmmStore, useTokenAccountStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
 import { formatToMaxDigit, getFirstNonZeroDecimal, formatCurrency, formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import toPercentString from '@/utils/numberish/toPercentString'
@@ -45,6 +45,10 @@ import { useEvent } from '@/hooks/useEvent'
 import { SlippageAdjuster } from '@/components/SlippageAdjuster'
 import useBirdeyeTokenPrice from '@/hooks/token/useBirdeyeTokenPrice'
 import useFetchRpcClmmInfo from '@/hooks/pool/clmm/useFetchRpcClmmInfo'
+import { ComputerSystemCallRequest, UserAssetBalance } from '@/types/computer'
+import { MixinMultipleTracesModal } from '@/components/Mixin/MixinMultipleTracesModal'
+import { initComputerClient } from '@/api/computer'
+import { toastSubject } from '@/hooks/toast/useGlobalToast'
 
 type FormatParams = Parameters<typeof formatToMaxDigit>[0]
 
@@ -61,8 +65,8 @@ export default function CreatePosition() {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { isOpen: isNFTOpen, onOpen: onNFTOpen, onClose: onNFTClose } = useDisclosure()
   const { getPriceAndTick, computePairAmount, openPositionAct, getTickPrice } = useClmmStore()
-  const getTokenBalanceUiAmount = useTokenAccountStore((s) => s.getTokenBalanceUiAmount)
   const fetchTokenAccountAct = useTokenAccountStore((s) => s.fetchTokenAccountAct)
+  const balanceAddressMap = useAppStore((s) => s.balanceAddressMap)
 
   const [nftAddress, setNFTAddress] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -150,12 +154,20 @@ export default function CreatePosition() {
     amountB: tokenAmount[1]
   })
 
+  const [balance, setBalance] = useState<{
+    token1?: UserAssetBalance;
+    token2?: UserAssetBalance;
+  }>({})
+
   const aprData = useClmmApr({
     poolInfo: currentPool,
     poolLiquidity: rpcData?.liquidity || new BN(0),
     positionInfo: tickPriceRef.current,
     timeBasis: aprTab
   })
+
+  const [requests, setRequests] = useState<ComputerSystemCallRequest[]>([])
+  const { isOpen: isTraceModalOpen, onOpen: onOpenTraceModal, onClose: onCloseTraceModal } = useDisclosure()
 
   const debounceCompute = useCallback(
     debounce((props: Parameters<typeof computePairAmount>[0]) => {
@@ -182,14 +194,8 @@ export default function CreatePosition() {
     poolId,
     priceRange,
     tokenAmount,
-    balanceA: getTokenBalanceUiAmount({
-      mint: wSolToSol(tokens.mintA?.address) || '',
-      decimals: tokens.mintA?.decimals
-    }).text,
-    balanceB: getTokenBalanceUiAmount({
-      mint: wSolToSol(tokens.mintB?.address) || '',
-      decimals: tokens.mintB?.decimals
-    }).text
+    balanceA: tokens.mintA ? balanceAddressMap[tokens.mintA.address]?.total_amount : 0,
+    balanceB: tokens.mintB ? balanceAddressMap[tokens.mintB.address]?.total_amount : 0
   })
 
   const formatDecimalToDigit = useCallback(
@@ -382,13 +388,13 @@ export default function CreatePosition() {
     mutateRpcData()
   })
 
-  const createPosition = () => {
+  const createPosition = async () => {
     setIsSending(true)
     const [mintAAmount, mintBAmount] = [
       new Decimal(tokenAmountRef.current[baseIn ? 0 : 1]).mul(10 ** (currentPool?.mintA.decimals ?? 0)).toFixed(0),
       new Decimal(tokenAmountRef.current[baseIn ? 1 : 0]).mul(10 ** (currentPool?.mintB.decimals ?? 0)).toFixed(0)
     ]
-    openPositionAct({
+    const res = await openPositionAct({
       poolInfo: currentPool!,
       base: focusPoolARef.current ? 'MintA' : 'MintB',
       baseAmount: focusPoolARef.current ? mintAAmount : mintBAmount,
@@ -405,10 +411,40 @@ export default function CreatePosition() {
       },
       onCloseToast: () => setIsSending(false),
       onError: () => setIsSending(false)
-    }).then((props) => {
-      setNFTAddress(props?.buildData?.extInfo.nftMint.toString() || '')
     })
+    setNFTAddress(res.buildData?.extInfo.nftMint.toString() || '')
+    setRequests(res.requests);
+    onOpenTraceModal();
   }
+  useEffect(() => {
+    if (requests.length === 0) return;
+    const client = initComputerClient();
+    const timer = setInterval(async () => {
+      try {
+        const call = await client.fetchCall(requests[requests.length - 1].trace);
+        if (call.state === 'done') {
+          onNFTOpen()
+          onClose()
+          clearInterval(timer);
+        } else if (call.state === 'failed') {
+          setIsSending(false);
+          onClose();
+          toastSubject.next({
+            status: 'error',
+            description: 'transation failed'
+          });
+          clearInterval(timer);
+        }
+      } catch {
+        // console.log(err)
+      }
+    }, 1000 * 5);
+    return () => clearInterval(timer);
+  }, [requests])
+  useEffect(() => {
+    if (!isNFTOpen) setIsSending(false);
+  }, [isNFTOpen])
+  
 
   const hasLockedLiquidity = currentPool && currentPool?.burnPercent > 0
 
@@ -640,6 +676,7 @@ export default function CreatePosition() {
             pool={currentPool}
             baseIn={baseIn}
             readonly={!currentPool || featureDisabled}
+            tokenBalance={balance}
             tokenAmount={tokenAmount}
             onFocusChange={handleFocusChange}
             onAmountChange={handleAmountChange}
@@ -738,6 +775,11 @@ export default function CreatePosition() {
         />
       ) : null}
       <DepositedNFTModal nftAddress={nftAddress} isOpen={isNFTOpen} onClose={onNFTClose} />
+
+      {
+        requests.length > 0 && isTraceModalOpen &&
+        <MixinMultipleTracesModal isOpen={isTraceModalOpen} onClose={onCloseTraceModal} requests={requests}/>
+      }
     </Grid>
   )
 }

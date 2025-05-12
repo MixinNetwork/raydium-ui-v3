@@ -4,7 +4,7 @@ import i18n from '@/i18n'
 import axios from 'axios'
 import { sendNetworkEvent } from './event'
 
-const axiosInstance = axios.create({ timeout: 60 * 1000 })
+const axiosInstance = axios.create({ timeout: 5 * 60 * 1000 })
 export const retryCount = 5
 export const skipRetryStatus = new Set([400, 403, 404, 500])
 const logCount = 800

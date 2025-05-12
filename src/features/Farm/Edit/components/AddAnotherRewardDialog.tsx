@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next'
 import useAddNewRewardSchema from '../schema/useAddNewRewardSchema'
 import { EditReward } from '../util'
 import { formatToRawLocaleStr } from '@/utils/numberish/formatter'
+import { Token } from '@/types/computer'
 
 /**
  * used in [FarmingRewardItemm](../FarmingRewardItem.tsx)
@@ -41,7 +42,7 @@ export default function AddAnotherRewardDialog({
 }: {
   defaultRewardInfo?: Partial<EditReward>
   isOpen: boolean
-  tokenFilterFn?: (token: TokenInfo) => boolean
+  tokenFilterFn?: (token: Token | TokenInfo) => boolean
   onSave: (rewardInfos: EditReward) => void
   onClose(): void
 }) {
@@ -68,7 +69,8 @@ export default function AddAnotherRewardDialog({
     setRewardInfos((s) => ({ ...s, ...partialInfo }))
   }
 
-  const onTokenChange = useEvent((token: TokenInfo | ApiV3Token) => {
+  const onTokenChange = useEvent((t: Token | TokenInfo | ApiV3Token) => {
+    const token = 'info' in t ? t.info : t;
     onChange({ mint: token })
   })
 

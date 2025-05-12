@@ -79,7 +79,8 @@
     "back": "返回",
     "next_step": "下一步",
     "migrate": "迁移",
-    "connect_wallet": "连接钱包"
+    "connect_wallet": "连接钱包",
+    "register": "注册"
   },
   "badge": {
     "suggested": "推荐",
@@ -608,5 +609,14 @@
     "mode_M_title": "乘数方法",
     "mode_M_desc": "该方法将用户价格范围与池的历史价格范围相交的乘数应用于计算预估年化百分率。",
     "mode_M_desc_brief": "通过乘数方法计算预估年化百分率。单击'M'图标切换到Delta方法或"
+  },
+  "computer": {
+    "login": "登录",
+    "scan": "使用 Mixin Messenger 扫描二维码",
+    "registered": "您已注册！",
+    "register_success": "注册成功！",
+    "deploying_assets": "正在部署资产...",
+    "deploy_success": "资产部署成功！",
+    "traces": "第{{index}}笔交易，共{{total}}笔"
   }
 }

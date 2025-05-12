@@ -4,11 +4,12 @@ import AddLiquidityPlus from '@/icons/misc/AddLiquidityPlus'
 import InputLockIcon from '@/icons/misc/InputLockIcon'
 import { useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables/colors'
+import { UserAssetBalance } from '@/types/computer'
 import { wsolToSolToken } from '@/utils/token'
 import { Box, Flex, Text, VStack } from '@chakra-ui/react'
 import { ApiV3PoolInfoConcentratedItem, WSOLMint } from '@raydium-io/raydium-sdk-v2'
 import { PublicKey } from '@solana/web3.js'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export type TokenParams = { token1?: string; token2?: string }
@@ -30,6 +31,10 @@ interface Props {
   onTokenChange?: (val: TokenParams, userTriggered?: boolean) => void
   onAmountChange: (val: string, side: string) => void
   onFocusChange: (mint?: string) => void
+  tokenBalance: {
+    token1?: UserAssetBalance;
+    token2?: UserAssetBalance;
+  }
 }
 
 export default function CLMMTokenInputGroup(props: Props) {
@@ -37,6 +42,7 @@ export default function CLMMTokenInputGroup(props: Props) {
   const {
     pool,
     tokenAmount,
+    tokenBalance: balance,
     maxMultiplier,
     disableSelectToken,
     token1Disable,
@@ -49,6 +55,7 @@ export default function CLMMTokenInputGroup(props: Props) {
     onFocusChange
   } = props
   const tokenMap = useTokenStore((s) => s.tokenMap)
+
 
   useEffect(() => {
     if (!pool) return
@@ -97,6 +104,7 @@ export default function CLMMTokenInputGroup(props: Props) {
           disableSelectToken={disableSelectToken}
           readonly={readonly || token1Disable}
           value={tokenAmount[0]}
+          balance={baseIn ? balance.token1 : balance.token2}
           token={pool ? wsolToSolToken(pool[baseIn ? 'mintA' : 'mintB']) : undefined}
           maxMultiplier={maxMultiplier}
           onChange={handleToken1Change}
@@ -121,6 +129,7 @@ export default function CLMMTokenInputGroup(props: Props) {
           disableSelectToken={disableSelectToken}
           readonly={readonly || token2Disable}
           value={tokenAmount[1]}
+          balance={baseIn ? balance.token2 : balance.token1}
           token={pool ? wsolToSolToken(pool[baseIn ? 'mintB' : 'mintA']) : undefined}
           maxMultiplier={maxMultiplier}
           onChange={handleToken2Change}

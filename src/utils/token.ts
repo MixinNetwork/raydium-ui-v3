@@ -1,6 +1,7 @@
 import { TOKEN_WSOL, WSOLMint, SOLMint, USDCMint, USDTMint, ApiV3Token, SOL_INFO, TokenInfo } from '@raydium-io/raydium-sdk-v2'
 import { PublicKey } from '@solana/web3.js'
 import { sortItems } from '@/utils/sortItems'
+import { Token, UserAssetBalance } from '@/types/computer'
 
 export const wSolToSol = (key?: string): string | undefined => (key === WSOLMint.toBase58() ? SOLMint.toBase58() : key)
 export const solToWSol = (key?: string): string | undefined => (key === SOLMint.toBase58() ? WSOLMint.toBase58() : key)
@@ -82,6 +83,69 @@ export const filterTokenFn = (list: TokenInfo[], params?: { searchStr?: string; 
     tokenGroup[1] = tokenGroup[1]
       ? sortItems(tokenGroup[1], {
         sortRules: [{ value: (i) => i.type === 'raydium' }]
+      })
+      : tokenGroup[1]
+    filteredList = tokenGroup.flat().filter(Boolean)
+  }
+  return filteredList
+}
+
+export const filterMixinTokenFn = (list: UserAssetBalance[], params?: { searchStr?: string; skipFn?: (token: UserAssetBalance) => boolean }) => {
+  const { searchStr, skipFn } = params || {}
+  const searchText = searchStr ? searchStr.trim().toLocaleLowerCase() : ''
+  let filteredList = [...list]
+  if (searchText) {
+    const tokenGroup: UserAssetBalance[][] = []
+    list.forEach((data) => {
+      if (skipFn?.(data) || tokenGroup[0]) return
+
+      if (data.address && searchText === data.address.toLocaleLowerCase()) {
+        tokenGroup[0] = [data]
+        return
+      }
+      if (data.asset && searchText === data.asset.symbol.toLocaleLowerCase()) {
+        tokenGroup[1] = [...(tokenGroup[1] || []), data]
+        return
+      }
+      if (data.asset && searchText === data.asset.symbol.toLocaleLowerCase()) {
+        tokenGroup[1] = [...(tokenGroup[1] || []), data]
+        return
+      }
+      const idx = data.asset ? data.asset.symbol.toLocaleLowerCase().indexOf(searchText) : -1;
+      if (idx > -1) {
+        tokenGroup[idx + 2] = [...(tokenGroup[idx + 2] || []), data]
+      }
+    })
+    filteredList = tokenGroup.flat().filter(Boolean)
+  }
+  return filteredList
+}
+
+export const filterFilteredMixinTokenFn = (list: Token[], params?: { searchStr?: string; skipFn?: (token: TokenInfo) => boolean }) => {
+  const { searchStr, skipFn } = params || {}
+  const searchText = searchStr ? searchStr.trim().toLocaleLowerCase() : ''
+  let filteredList = [...list]
+  if (searchText) {
+    const tokenGroup: Token[][] = []
+    list.forEach((data) => {
+      if (skipFn?.(data.info) || tokenGroup[0]) return
+
+      if (searchText === data.info.address.toLocaleLowerCase()) {
+        tokenGroup[0] = [data]
+        return
+      }
+      if (searchText === data.info.symbol.toLocaleLowerCase()) {
+        tokenGroup[1] = [...(tokenGroup[1] || []), data]
+        return
+      }
+      const idx = data.info.symbol.toLocaleLowerCase().indexOf(searchText)
+      if (idx > -1) {
+        tokenGroup[idx + 2] = [...(tokenGroup[idx + 2] || []), data].sort((a, b) => b.info.priority - a.info.priority)
+      }
+    })
+    tokenGroup[1] = tokenGroup[1]
+      ? sortItems(tokenGroup[1], {
+        sortRules: [{ value: (i) => i.info.type === 'raydium' }]
       })
       : tokenGroup[1]
     filteredList = tokenGroup.flat().filter(Boolean)

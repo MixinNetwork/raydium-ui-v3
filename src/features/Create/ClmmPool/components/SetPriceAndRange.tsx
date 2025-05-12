@@ -377,13 +377,15 @@ export default function SetPriceAndRange({
           {t('field.current_price')}:
         </Text>
         <QuestionToolTip iconType="question" label={t('create_standard_pool.current_price_tooltip')} />
-        <Text color={colors.textSecondary} fontSize="sm" display="flex" alignItems="center" gap="1">
-          {isPriceLoading ? <Skeleton width={16} height={4} /> : formatToRawLocaleStr(onlinePrice)}
-          {t('common.per_unit', {
+        <Flex color={colors.textSecondary} fontSize="sm" display="flex" alignItems="center" gap="1">
+          <Box>{isPriceLoading ? <Skeleton width={16} height={4} /> : formatToRawLocaleStr(onlinePrice)}</Box>
+          <Box>
+            {t('common.per_unit', {
             subA: wSolToSolString(priceReverse ? tokenQuote.symbol : tokenBase.symbol),
             subB: wSolToSolString(priceReverse ? tokenBase.symbol : tokenQuote.symbol)
-          })}
-        </Text>
+            })}
+          </Box>
+        </Flex>
         <Box
           border={`1px solid ${colors.secondary}`}
           p="1px"

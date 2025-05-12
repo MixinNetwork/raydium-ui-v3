@@ -16,6 +16,7 @@ import { wSolToSolString } from '@/utils/token'
 import { TxCallbackProps } from '@/types/tx'
 import { useTranslation } from 'react-i18next'
 import Decimal from 'decimal.js'
+import { Token } from '@/types/computer'
 
 export default function ExistFarmingRewardItem({
   reward,
@@ -48,8 +49,9 @@ export default function ExistFarmingRewardItem({
 
   const [currentStatus, setCurrentStatus] = useState<FarmStatus>(reward.status)
 
-  const filterFn = useEvent((token: TokenInfo) => {
+  const filterFn = useEvent((t: Token | TokenInfo) => {
     if (!tokenFilterFn) return true
+    const token = 'info' in t ? t.info : t;
     return tokenFilterFn(token, reward.mint.address)
   })
 

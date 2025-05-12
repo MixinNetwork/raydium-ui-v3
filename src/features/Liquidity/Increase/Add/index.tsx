@@ -24,6 +24,7 @@ import { useEvent } from '@/hooks/useEvent'
 import { throttle } from '@/utils/functionMethods'
 import useRefreshEpochInfo from '@/hooks/app/useRefreshEpochInfo'
 import BN from 'bn.js'
+import { Token } from '@/types/computer'
 
 const InputWidth = ['100%']
 export default function AddLiquidity({
@@ -42,7 +43,7 @@ export default function AddLiquidity({
   rpcData?: RpcAmmPool | RpcCpmmPool
   mutate: () => void
   onRefresh: () => void
-  onSelectToken: (token: TokenInfo | ApiV3Token, side: 'base' | 'quote') => void
+  onSelectToken: (token: Token | TokenInfo | ApiV3Token, side: 'base' | 'quote') => void
 }) {
   const { t } = useTranslation()
   const [addLiquidityAct, computePairAmount, addCpmmLiquidityAct] = useLiquidityStore(

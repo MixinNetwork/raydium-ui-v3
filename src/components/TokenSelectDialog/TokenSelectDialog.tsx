@@ -8,26 +8,37 @@ import { Box, Grid, GridItem, Heading, Modal, ModalBody, ModalCloseButton, Modal
 import TokenListSetting from './components/TokenListSetting'
 import TokenList, { TokenListHandles } from './components/TokenList'
 import TokenListUnknown from './components/TokenListUnknown'
+import MixinTokenList from './components/MixinTokenList'
+import ComputerTokenList from './components/ComputerTokenList'
+import MergedTokenList from './components/MergedTokenList'
+import { Token, UserAssetBalance } from '@/types/computer'
 
 export interface TokenSelectDialogProps {
-  onSelectValue: (token: TokenInfo) => void
+  onSelectValue: ((token: TokenInfo | Token) => void) | ((token: UserAssetBalance) => void)
   isOpen: boolean
-  filterFn?: (token: TokenInfo) => boolean
+  filterFn?: ((token: TokenInfo | Token) => boolean) | ((token: UserAssetBalance) => boolean) 
   onClose: () => void
+  fromMixin?: boolean;
+  fromComputer?: boolean;
+  mergeComputer?: boolean;
 }
 
 enum PageType {
   TokenList,
   TokenListSetting,
-  TokenListUnknown
+  TokenListUnknown,
+  MixinTokenList,
+  ComputerTokenList,
+  MergedTokenList,
 }
 
 export default forwardRef<TokenListHandles, TokenSelectDialogProps>(function TokenSelectDialog(
-  { onSelectValue, isOpen, filterFn, onClose },
+  { onSelectValue, isOpen, filterFn, onClose, fromMixin, fromComputer, mergeComputer },
   ref
 ) {
   const { t } = useTranslation()
-  const [currentPage, setCurrentPage] = useState<PageType>(PageType.TokenList)
+  const init = fromMixin ? PageType.MixinTokenList : fromComputer ? PageType.ComputerTokenList : mergeComputer ? PageType.MergedTokenList : PageType.TokenList
+  const [currentPage, setCurrentPage] = useState<PageType>(init)
 
   const renderModalContent = useCallback(() => {
     switch (currentPage) {
@@ -37,34 +48,128 @@ export default forwardRef<TokenListHandles, TokenSelectDialogProps>(function Tok
         return <TokenListSettingContent />
       case PageType.TokenListUnknown:
         return <TokenListUnknownContent />
+      case PageType.MixinTokenList:
+        return <MixinTokenListContent />
+      case PageType.ComputerTokenList:
+        return <ComputerTokenListContent />
+      case PageType.MergedTokenList:
+        return <MergedTokenListContent />
       default:
         return null
     }
   }, [currentPage])
 
-  const TokenListContent = () => (
-    <>
-      <ModalHeader mx="8px">
-        <Heading fontSize="xl" fontWeight={500} mb="24px">
-          {t('common.select_a_token')}
-        </Heading>
-      </ModalHeader>
-      <ModalCloseButton />
-      <ModalBody display={'flex'} flexDirection={'column'} overflowX="hidden">
-        <Box height={['auto', '60vh']} flex={['1', 'unset']}>
-          <TokenList
-            ref={ref}
-            onOpenTokenList={() => setCurrentPage(PageType.TokenListSetting)}
-            onChooseToken={(token) => {
-              onSelectValue(token)
-            }}
-            isDialogOpen={isOpen}
-            filterFn={filterFn}
-          />
-        </Box>
-      </ModalBody>
-    </>
-  )
+  const MixinTokenListContent = () => {
+    const onSelect = onSelectValue as (token: UserAssetBalance) => void
+    const filter = filterFn as (token: UserAssetBalance) => boolean
+    return (
+      <>
+        <ModalHeader mx="8px">
+          <Heading fontSize="xl" fontWeight={500} mb="24px">
+            {t('common.select_a_token')}
+          </Heading>
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody display={'flex'} flexDirection={'column'} overflowX="hidden">
+          <Box height={['auto', '60vh']} flex={['1', 'unset']}>
+            <MixinTokenList
+              ref={ref}
+              onOpenTokenList={() => setCurrentPage(PageType.MixinTokenList)}
+              onChooseToken={(token: UserAssetBalance) => {
+                onSelect(token)
+              }}
+              isDialogOpen={isOpen}
+              filterFn={filter}
+            />
+          </Box>
+        </ModalBody>
+      </>
+    )
+  }
+
+  const ComputerTokenListContent = () => {
+    const onSelect = onSelectValue as (token: Token | TokenInfo) => void
+    const filter = filterFn as (token: Token | TokenInfo) => boolean
+    return (
+      <>
+        <ModalHeader mx="8px">
+          <Heading fontSize="xl" fontWeight={500} mb="24px">
+            {t('common.select_a_token')}
+          </Heading>
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody display={'flex'} flexDirection={'column'} overflowX="hidden">
+          <Box height={['auto', '60vh']} flex={['1', 'unset']}>
+            <ComputerTokenList
+              ref={ref}
+              onOpenTokenList={() => setCurrentPage(PageType.ComputerTokenList)}
+              onChooseToken={(token: Token | TokenInfo) => {
+                onSelect(token)
+              }}
+              isDialogOpen={isOpen}
+              filterFn={filter}
+            />
+          </Box>
+        </ModalBody>
+      </>
+    )
+  }
+
+  const MergedTokenListContent = () => {
+    const onSelect = onSelectValue as (token: Token | TokenInfo) => void
+    const filter = filterFn as (token: Token | TokenInfo) => boolean
+    return (
+      <>
+        <ModalHeader mx="8px">
+          <Heading fontSize="xl" fontWeight={500} mb="24px">
+            {t('common.select_a_token')}
+          </Heading>
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody display={'flex'} flexDirection={'column'} overflowX="hidden">
+          <Box height={['auto', '60vh']} flex={['1', 'unset']}>
+            <MergedTokenList
+              ref={ref}
+              onOpenTokenList={() => setCurrentPage(PageType.MergedTokenList)}
+              onChooseToken={(token: Token | TokenInfo) => {
+                onSelect(token)
+              }}
+              isDialogOpen={isOpen}
+              filterFn={filter}
+            />
+          </Box>
+        </ModalBody>
+      </>
+    )
+  }
+
+  const TokenListContent = () => {
+    const onSelect = onSelectValue as (token: TokenInfo) => void
+    const filter = filterFn as (token: TokenInfo) => boolean
+    return (
+      <>
+        <ModalHeader mx="8px">
+          <Heading fontSize="xl" fontWeight={500} mb="24px">
+            {t('common.select_a_token')}
+          </Heading>
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody display={'flex'} flexDirection={'column'} overflowX="hidden">
+          <Box height={['auto', '60vh']} flex={['1', 'unset']}>
+            <TokenList
+              ref={ref}
+              onOpenTokenList={() => setCurrentPage(PageType.TokenListSetting)}
+              onChooseToken={(token) => {
+                onSelect(token)
+              }}
+              isDialogOpen={isOpen}
+              filterFn={filter}
+            />
+          </Box>
+        </ModalBody>
+      </>
+    )
+  }
 
   const TokenListSettingContent = () => (
     <>
@@ -116,7 +221,7 @@ export default forwardRef<TokenListHandles, TokenSelectDialogProps>(function Tok
     onClose()
   })
   const onCloseComplete = useEvent(() => {
-    setCurrentPage(PageType.TokenList)
+    setCurrentPage(init)
   })
   return (
     <Modal variant={'mobileFullPage'} isOpen={isOpen} onClose={handleClose} onCloseComplete={onCloseComplete}>

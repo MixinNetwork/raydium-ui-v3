@@ -37,6 +37,7 @@ export default function Swap() {
   const { isMobile } = useResponsive()
   const publicKey = useAppStore((s) => s.publicKey)
   const connected = useAppStore((s) => s.connected)
+  const getToken = useTokenStore((s) => s.getToken)
   const [directionReverse, setDirectionReverse] = useState<boolean>(false)
   const [selectedTimeType, setSelectedTimeType] = useState<TimeType>('15m')
   const [cacheLoaded, setCacheLoaded] = useState(false)
@@ -51,8 +52,8 @@ export default function Swap() {
   const baseMint = directionReverse ? outputMint : inputMint
   const quoteMint = directionReverse ? inputMint : outputMint
   const tokenMap = useTokenStore((s) => s.tokenMap)
-  const baseToken = useMemo(() => tokenMap.get(baseMint), [tokenMap, baseMint])
-  const quoteToken = useMemo(() => tokenMap.get(quoteMint), [tokenMap, quoteMint])
+  const baseToken = useMemo(() => getToken(baseMint), [tokenMap, baseMint])
+  const quoteToken = useMemo(() => getToken(quoteMint), [tokenMap, quoteMint])
   const [isDirectionNeedReverse, setIsDirectionNeedReverse] = useState<boolean>(false)
 
   useEffect(() => {

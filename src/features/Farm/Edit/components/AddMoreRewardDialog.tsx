@@ -31,6 +31,7 @@ import { ApiV3Token } from '@raydium-io/raydium-sdk-v2'
 import DatePickerModal from '@/components/FarmDatePickerModal'
 import { formatToRawLocaleStr } from '@/utils/numberish/formatter'
 import { wSolToSol, wsolToSolToken } from '@/utils/token'
+import { Token } from '@/types/computer'
 
 /**
  * used in [FarmingRewardItem](../FarmingRewardItem.tsx)
@@ -48,7 +49,7 @@ export default function AddMoreRewardDialog({
   defaultRewardInfo: EditReward
   isOpen: boolean
   isEcoSystemAddMore?: boolean
-  tokenFilterFn?: (token: TokenInfo) => boolean
+  tokenFilterFn?: (token: Token | TokenInfo) => boolean
   onSave: (rewardInfos: EditReward) => void
   onClose(): void
 }) {
@@ -78,8 +79,9 @@ export default function AddMoreRewardDialog({
     setRewardInfos((s) => ({ ...s, ...partialInfo }))
   }
 
-  const onTokenChange = useEvent((mint: ApiV3Token) => {
-    onChange({ ...rewardInfo, mint })
+  const onTokenChange = useEvent((mint: Token | ApiV3Token) => {
+    const t = 'info' in mint ? mint.info : mint
+    onChange({ ...rewardInfo, mint: t })
   })
 
   const onAmountChange = useEvent((valNumber: string) => {

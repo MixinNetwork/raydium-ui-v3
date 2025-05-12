@@ -8,6 +8,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NewRewardInfo } from '../../type'
 import AddRewardItem from './Reward'
+import { Token } from '@/types/computer'
 
 export default function RewardAddItem(props: {
   maxRewardCount: number
@@ -23,7 +24,8 @@ export default function RewardAddItem(props: {
   const hasError = props.rewardInfos.some((r) => !r.isValid) || props.rewardInfos.length === 0
   const existsTokens = props.rewardInfos.map((r) => r.token).join(',')
   const tokenFilterFn = useCallback(
-    (token: ApiV3Token) => {
+    (t: Token | ApiV3Token) => {
+      const token = 'info' in t ? t.info : t;
       const existsTokenSet = new Set(existsTokens.split(','))
       return !existsTokenSet.has(token.address)
     },

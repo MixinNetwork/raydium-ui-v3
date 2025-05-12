@@ -134,16 +134,6 @@ export default function Pools() {
       label: isEN && isMobile ? 'CLMM' : t('liquidity.concentrated'),
       value: PoolFetchType.Concentrated
     },
-    {
-      name: 'Standard',
-      label: isEN && isMobile ? 'STANDARD' : t('liquidity.standard'),
-      value: PoolFetchType.Standard
-    },
-    {
-      name: 'All',
-      label: isEN && isMobile ? 'ALL' : t('common.all'),
-      value: PoolFetchType.All
-    }
   ]
 
   const listControllerIconSize = useBreakpointValue({ base: '24px', sm: '28px' })

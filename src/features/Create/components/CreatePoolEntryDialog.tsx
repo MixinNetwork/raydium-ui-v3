@@ -200,93 +200,12 @@ export function CreatePoolEntryDialogBody({ type, onChange }: { type: CreateTarg
                       }
                       onClickSelf={() => onChange('concentrated-liquidity')}
                     />
-                    <PoolTypeItem
-                      isActive={type === 'standard-amm'}
-                      content={
-                        <Box>
-                          <Text whiteSpace="nowrap" fontSize="sm">
-                            {t('create_pool.modal_tab_standard_amm')}
-                          </Text>
-                          <Text fontSize="xs">{t('create_pool.modal_tab_standard_amm_desc')}</Text>
-                        </Box>
-                      }
-                      onClickSelf={() => onChange('standard-amm')}
-                    />
-                    <PoolTypeItem
-                      isActive={type === 'legacy-amm'}
-                      content={
-                        <Box>
-                          <Text whiteSpace="nowrap" fontSize="sm">
-                            {t('create_pool.modal_tab_legacy_amm')}
-                          </Text>
-                          <Text fontSize="xs">{t('create_pool.modal_tab_legacy_amm_desc')}</Text>
-                        </Box>
-                      }
-                      onClickSelf={() => onChange('legacy-amm')}
-                    />
                   </Stack>
                 </>
               )
             : undefined
         }
         onClick={() => onChange('concentrated-liquidity')}
-      />
-      <CreateBlock
-        title={t('farm.create')}
-        description={
-          isCreateFarm ? (
-            <Trans i18nKey="create_pool.modal_section_header_farm_desc">
-              <Link href="https://docs.raydium.io/raydium/pool-creation/creating-a-clmm-pool-and-farm" isExternal>
-                CLMM
-              </Link>
-              <Link href="https://docs.raydium.io/raydium/pool-creation/creating-a-standard-amm-pool/creating-an-ecosystem-farm" isExternal>
-                Standard
-              </Link>
-            </Trans>
-          ) : null
-        }
-        selected={isCreateFarm}
-        onClick={() => onChange('standard-farm')}
-      />
-      <CreateBlock
-        title={t('create_pool.modal_section_header_lock')}
-        description={
-          isLockPool ? (
-            <Trans i18nKey="create_pool.modal_section_header_lock_desc">
-              <Link href="https://docs.raydium.io/raydium/pool-creation/burn-and-earn" isExternal>
-                Learn more
-              </Link>
-            </Trans>
-          ) : null
-        }
-        selected={isLockPool}
-        renderPoolType={
-          isLockPool
-            ? () => (
-                <Stack flexDirection={['column', 'row']}>
-                  <PoolTypeItem
-                    isActive={type === 'clmm-lock'}
-                    content={
-                      <Text whiteSpace="nowrap" fontSize="sm">
-                        {t('create_pool.modal_tab_concentrated')}
-                      </Text>
-                    }
-                    onClickSelf={() => onChange('clmm-lock')}
-                  />
-                  <PoolTypeItem
-                    isActive={type === 'cpmm-lock'}
-                    content={
-                      <Text whiteSpace="nowrap" fontSize="sm">
-                        {t('create_pool.modal_tab_standard_amm')}
-                      </Text>
-                    }
-                    onClickSelf={() => onChange('cpmm-lock')}
-                  />
-                </Stack>
-              )
-            : undefined
-        }
-        onClick={() => onChange('clmm-lock')}
       />
     </Flex>
   )

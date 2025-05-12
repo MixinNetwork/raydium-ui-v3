@@ -30,9 +30,9 @@ export default function PendingYield({ isLoading, hasReward, pendingYield, rewar
             ({pendingYield ?? '$0'})
           </Text>
         </HStack>
-        <Button isLoading={isLoading} isDisabled={!hasReward} onClick={onHarvest} size="sm" fontSize="md" variant="outline">
+        {/* <Button isLoading={isLoading} isDisabled={!hasReward} onClick={onHarvest} size="sm" fontSize="md" variant="outline">
           {t('portfolio.section_positions_clmm_account_pending_yield_button')}
-        </Button>
+        </Button> */}
       </HStack>
 
       <Flex display="grid" gridTemplateColumns="repeat(2, 1fr)" columnGap={0} rowGap={2}>

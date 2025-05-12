@@ -6,6 +6,7 @@ import { ReactNode, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import TokenAvatar from './TokenAvatar'
 import TokenSelectDialog from './TokenSelectDialog'
+import { Token } from '@/types/computer'
 
 interface Props {
   /** for flex box */
@@ -17,8 +18,8 @@ interface Props {
 
   token?: TokenInfo
   name?: string
-  onSelectToken: (token: TokenInfo | undefined, name?: string) => void
-  filterTokenFn?: (token: TokenInfo) => boolean
+  onSelectToken: (token: Token | TokenInfo | undefined, name?: string) => void
+  filterTokenFn?: (token: Token | TokenInfo) => boolean
 }
 
 /**
@@ -34,7 +35,7 @@ export default function TokenSelectBox({ token, label, placeholder: _placeholder
     </Text>
   )
   const handleSelectValue = useCallback(
-    (token: TokenInfo) => {
+    (token: Token | TokenInfo) => {
       onSelectToken(token, name)
       onClose()
     },

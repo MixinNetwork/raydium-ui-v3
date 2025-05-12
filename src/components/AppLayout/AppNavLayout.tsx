@@ -22,10 +22,9 @@ import {
 } from '@chakra-ui/react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import React, { ReactNode, useRef } from 'react'
+import React, { ReactNode, useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Desktop, Mobile } from '../MobileDesktop'
-import SolWallet from '../SolWallet'
 import { MobileBottomNavbar } from './MobileBottomNavbar'
 import { ColorThemeSettingField } from './components/ColorThemeSettingField'
 import { DefaultExplorerSettingField } from './components/DefaultExplorerSettingField'
@@ -38,6 +37,7 @@ import { VersionedTransactionSettingField } from './components/VersionedTransact
 import { PriorityButton } from './components/PriorityButton'
 import DisclaimerModal from './components/DisclaimerModal'
 import AppVersion from './AppVersion'
+import MixinWallet from '../Mixin'
 
 export interface NavSettings {
   // colorTheme: 'dark' | 'light'
@@ -53,6 +53,13 @@ function AppNavLayout({
 }) {
   const { t } = useTranslation()
   const { pathname } = useRouter()
+
+  const {getMe} = useAppStore((s) => ({
+    getMe: s.getMe,
+  }));
+  useEffect(() => {
+    getMe();
+  }, []);
 
   return (
     <Flex direction="column" id="app-layout" height="full" overflow={overflowHidden ? 'hidden' : 'auto'}>
@@ -100,20 +107,6 @@ function AppNavLayout({
             <RouteLink href="/swap" isActive={pathname === '/swap'} title={t('swap.title')} />
             <RouteLink href="/liquidity-pools" isActive={pathname.includes('/liquidity')} title={t('liquidity.title')} />
             <RouteLink href="/portfolio" isActive={pathname === '/portfolio'} title={t('portfolio.title')} />
-            <RouteLink href="https://perps.raydium.io" isActive={false} title={t('perpetuals.title')} />
-            <Menu size="lg">
-              <MenuButton fontSize={'lg'} px={4} py={2}>
-                <Flex
-                  align="center"
-                  gap={0.5}
-                  color={pathname === '/staking' || pathname === '/bridge' ? colors.textSecondary : colors.textTertiary}
-                >
-                  {pathname === '/staking' ? t('staking.title') : pathname === '/bridge' ? t('bridge.title') : t('common.more')}
-                  <ChevronDownIcon width={16} height={16} />
-                </Flex>
-              </MenuButton>
-              <NavMoreButtonMenuPanel />
-            </Menu>
           </HStack>
         </Desktop>
 
@@ -122,7 +115,7 @@ function AppNavLayout({
           <PriorityButton />
           <SettingsMenu />
           {/* <EVMWallet />  don't need currently yet*/}
-          <SolWallet />
+          <MixinWallet />
         </Flex>
       </HStack>
 

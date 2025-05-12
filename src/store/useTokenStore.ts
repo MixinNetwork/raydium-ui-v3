@@ -1,10 +1,13 @@
 import { PublicKey } from '@solana/web3.js'
 import { MintLayout, RawMint } from '@solana/spl-token'
 import { TokenInfo, JupTokenType, ApiV3Token } from '@raydium-io/raydium-sdk-v2'
+import { ComputerAsset } from '@/types/computer'
 import createStore from './createStore'
 import { useAppStore } from './useAppStore'
 import { getStorageItem, setStorageItem } from '@/utils/localStorage'
 import logMessage from '@/utils/log'
+import { initComputerClient } from '@/api/computer'
+
 export const EXTRA_TOKEN_KEY = '_r_cus_t_'
 
 export interface TokenPrice {
@@ -26,6 +29,12 @@ export interface TokenStore {
   extraLoadedTokenList: TokenInfo[]
   whiteListMap: Set<string>
 
+  computerAssets: ComputerAsset[];
+  computerAssetIdMap: Record<string, ComputerAsset>;
+  computerAssetAddressMap: Record<string, ComputerAsset>;
+  getComputerAssets: () => Promise<void>;
+  getToken: (address: string) => TokenInfo | undefined;
+
   loadTokensAct: (forceUpdate?: boolean, jupTokenType?: JupTokenType) => void
   setDisplayTokenListAct: () => void
   setExtraTokenListAct: (props: { token: TokenInfo; addToStorage?: boolean; update?: boolean }) => void
@@ -43,7 +52,11 @@ const initTokenSate = {
   tokenMap: new Map(),
   tokenPriceRecord: new Map(),
   mintGroup: { official: new Set<string>(), jup: new Set<string>() },
-  whiteListMap: new Set<string>()
+  whiteListMap: new Set<string>(),
+
+  computerAssets: [],
+  computerAssetIdMap: {},
+  computerAssetAddressMap: {},
 }
 
 export const cachedTokenInfo: Map<string, RawMint> = new Map()
@@ -89,9 +102,123 @@ export const getStorageToken = (mint: string): TokenInfo | undefined => {
   return cacheInfo
 }
 
+const client = initComputerClient();
 export const useTokenStore = createStore<TokenStore>(
   (set, get) => ({
     ...initTokenSate,
+    getComputerAssets: async () => {
+      const { getMixinClient, user } = useAppStore.getState()
+      if (!user) return;
+      const assets = await client.fetchAssets();
+      const { computerAssets: current } = get();
+      if (assets.length > current.length) {
+        const ids = assets.map(a => a.asset_id);
+        const mp = assets.reduce((prev, cur, index) => {
+          prev[cur.asset_id]= index
+          return prev;
+        }, {} as Record<string, number>)
+
+        const client = getMixinClient();
+        const mas = await client.safe.fetchAssets(ids);
+        const fas = mas.map((a, i) => ({
+          ...assets[mp[a.asset_id]],
+          asset: {
+            ...a,
+            name: a.display_name,
+            symbol: a.display_symbol
+          }
+        }));
+
+        const addressMap = fas.reduce((prev, cur) => {
+          prev[cur.address] = cur;
+          return prev;
+        }, {} as Record<string, ComputerAsset>);
+        const idMap = fas.reduce((prev, cur) => {
+          prev[cur.asset_id] = cur;
+          return prev;
+        }, {} as Record<string, ComputerAsset>);
+        set({ 
+          computerAssets: fas, 
+          computerAssetAddressMap: addressMap,
+          computerAssetIdMap: idMap
+        });
+      }
+    },
+    getToken: (address: string) => {  
+      const { computerAssetAddressMap: am, tokenMap } = get();
+      const token = tokenMap.get(address)
+      if (token) return token;
+      const ca = am[address];
+      if (ca)
+        return {
+          address: address,
+          chainId: 101,
+          decimals: ca.asset.precision,
+          extensions: {},
+          logoURI: ca.uri,
+          name: ca.asset.name,
+          programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          symbol: ca.asset.symbol,
+          tags: [],
+          priority: 90,
+        } as TokenInfo
+      return undefined
+      // const { balanceAddressMap, connection } = useAppStore.getState()
+      // const assetId = buildAssetId(address);
+      // const b = balanceAddressMap[address]
+      // const c = NetworkClient();
+
+      // if (am[address]) {
+      //   const asset = b ? b.asset : (await c.fetchAsset(assetId));
+      //   const info = {
+      //     address: address,
+      //     chainId: 101,
+      //     decimals: asset.precision,
+      //     extensions: {},
+      //     logoURI: am[address].uri,
+      //     name: asset.name,
+      //     programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      //     symbol: asset.symbol,
+      //     tags: [],
+      //     priority: 90,
+      //   };
+      //   const balance = b ?? {
+      //     asset_id: assetId,
+      //     total_amount: "0",
+      //     outputs: [],
+      //     address,
+      //     asset
+      //   }
+      //   return {
+      //     info,
+      //     balance
+      //   }
+      // }
+
+      // const info = tokenMap.get(address) ?? (await getTokenInfo({ mint: address, connection }));
+      // if (!info) return undefined;
+      // if (b) {
+      //   return {
+      //     info: info,
+      //     balance: b,
+      //   }
+      // }
+      // const asset = await c.fetchAsset(assetId);
+      // if (asset) {
+      //   return {
+      //     info: info,
+      //     balance: {
+      //       asset_id: assetId,
+      //       total_amount: "0",
+      //       outputs: [],
+      //       address,
+      //       asset
+      //     },
+      //   }
+      // }
+      // return tokenMap.get(address)
+    },
+
     loadTokensAct: (forceUpdate?: boolean, jupTokenType?: JupTokenType) => {
       const raydium = useAppStore.getState().raydium
       if (!raydium) return
@@ -207,6 +334,7 @@ export const useTokenStore = createStore<TokenStore>(
       logMessage('rpc: get token info')
       const accountData = await connection.getAccountInfo(new PublicKey(mint), { commitment: useAppStore.getState().commitment })
       if (!accountData || accountData.data.length !== MintLayout.span) return
+      // @ts-ignore
       const tokenInfo = MintLayout.decode(accountData.data)
       cachedTokenInfo.set(mint.toString(), tokenInfo)
       return tokenInfo

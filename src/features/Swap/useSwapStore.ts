@@ -1,23 +1,23 @@
-import { PublicKey, VersionedTransaction, Transaction, SignatureResult } from '@solana/web3.js'
-import { TxVersion, txToBase64, SOL_INFO } from '@raydium-io/raydium-sdk-v2'
-import { createStore, useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
+import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram } from '@solana/web3.js'
+import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget } from '@raydium-io/raydium-sdk-v2'
+import BN from 'bn.js'
+import BigNumber from 'bignumber.js';
+import { createStore, useAppStore, useTokenStore } from '@/store'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
-import { txStatusSubject, TOAST_DURATION } from '@/hooks/toast/useTxStatus'
+import { txStatusSubject } from '@/hooks/toast/useTxStatus'
 import { ApiSwapV1OutSuccess } from './type'
-import { isSolWSol } from '@/utils/token'
 import axios from '@/api/axios'
-import { getTxMeta } from './swapMeta'
-import { formatLocaleStr } from '@/utils/numberish/formatter'
-import { getMintSymbol } from '@/utils/token'
 import Decimal from 'decimal.js'
 import { TxCallbackProps } from '@/types/tx'
 import i18n from '@/i18n'
 import { fetchComputePrice } from '@/utils/tx/computeBudget'
 import { trimTailingZero } from '@/utils/numberish/formatter'
-import { getDefaultToastData, handleMultiTxToast, transformProcessData } from '@/hooks/toast/multiToastUtil'
-import { handleMultiTxRetry } from '@/hooks/toast/retryTx'
-import { isSwapSlippageError } from '@/utils/tx/swapError'
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token'
+import { initComputerClient } from '@/api/computer'
+import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, uniqueConversationID, checkSystemCallSize } from '@mixin.dev/mixin-node-sdk'
+import { buildComputerExtra, buildSystemCallInvoiceExtra, computerEmptyExtra, handleInvoiceSchema } from '@/utils/mixin'
+import { OperationTypeSystemCall, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
+import { ComputerSystemCallRequest } from '@/types/computer'
+import { add } from '@/utils/number'
 
 const getSwapComputePrice = async () => {
   const transactionFee = useAppStore.getState().getPriorityFee()
@@ -43,10 +43,12 @@ interface SwapStore {
   slippage: number
   swapTokenAct: (
     props: { swapResponse: ApiSwapV1OutSuccess; wrapSol?: boolean; unwrapSol?: boolean; onCloseToast?: () => void } & TxCallbackProps
-  ) => Promise<string | string[] | undefined>
+  ) => Promise<ComputerSystemCallRequest[]>
   unWrapSolAct: (props: { amount: string; onClose?: () => void; onSent?: () => void; onError?: () => void }) => Promise<string | undefined>
   wrapSolAct: (amount: string) => Promise<string | undefined>
 }
+
+const client = MixinApi();
 
 export interface ComputeParams {
   inputMint: string
@@ -64,215 +66,166 @@ export const useSwapStore = createStore<SwapStore>(
     ...initSwapState,
 
     swapTokenAct: async ({ swapResponse, wrapSol, unwrapSol = false, onCloseToast, ...txProps }) => {
-      const { publicKey, raydium, txVersion, connection, signAllTransactions, urlConfigs } = useAppStore.getState()
-      if (!raydium || !connection) {
+      const { publicKey, raydium, connection, urlConfigs, account, info, balanceAddressMap, getUserMix, getComputerRecipient } = useAppStore.getState()
+      const computer = getComputerRecipient()
+      if (!raydium || !connection || !info || !computer || !account || !publicKey) {
         console.error('no connection')
-        return
+        toastSubject.next({ status: "error", description: "no connection" })
+        return [];
       }
-      if (!publicKey || !signAllTransactions) {
-        console.error('no wallet')
-        return
-      }
+      if (!raydium.owner) raydium.setOwner(publicKey);
 
       try {
-        const tokenMap = useTokenStore.getState().tokenMap
-        const [inputToken, outputToken] = [tokenMap.get(swapResponse.data.inputMint)!, tokenMap.get(swapResponse.data.outputMint)!]
-        const [isInputSol, isOutputSol] = [wrapSol && isSolWSol(swapResponse.data.inputMint), isSolWSol(swapResponse.data.outputMint)]
-
-        const inputTokenAcc = await raydium.account.getCreatedTokenAccount({
-          programId: new PublicKey(inputToken.programId ?? TOKEN_PROGRAM_ID),
-          mint: new PublicKey(inputToken.address),
-          associatedOnly: false
-        })
-
-        if (!inputTokenAcc && !isInputSol) {
-          console.error('no input token acc')
-          return
-        }
-
-        const outputTokenAcc = await raydium.account.getCreatedTokenAccount({
-          programId: new PublicKey(outputToken.programId ?? TOKEN_PROGRAM_ID),
-          mint: new PublicKey(outputToken.address)
-        })
+        const getToken = useTokenStore.getState().getToken
+        const [inputToken, outputToken] = [getToken(swapResponse.data.inputMint)!, getToken(swapResponse.data.outputMint)!]
 
         const computeData = await getSwapComputePrice()
+        const computeIns = computeData ? addComputeBudget(computeData).instructions : []
 
-        const isV0Tx = txVersion === TxVersion.V0
-        const {
-          data,
-          success
-        }: {
-          id: string
-          success: true
-          version: 'V1'
-          msg?: string
-          data?: { transaction: string }[]
-        } = await axios.post(
-          `${urlConfigs.SWAP_HOST}${urlConfigs.SWAP_TX}${swapResponse.data.swapType === 'BaseIn' ? 'swap-base-in' : 'swap-base-out'}`,
-          {
-            wallet: publicKey.toBase58(),
-            computeUnitPriceMicroLamports: new Decimal(computeData?.microLamports || 0).toFixed(0),
-            swapResponse,
-            txVersion: isV0Tx ? 'V0' : 'LEGACY',
-            wrapSol: isInputSol,
-            unwrapSol,
-            inputAccount: isInputSol ? undefined : inputTokenAcc?.toBase58(),
-            outputAccount: isOutputSol ? undefined : outputTokenAcc?.toBase58()
-          }
+        const poolsResp = await axios.get<PoolKeys[]>(
+          urlConfigs.BASE_HOST + urlConfigs.POOL_KEY_BY_ID + `?ids=${swapResponse.data.routePlan.map((r) => r.poolId).join(',')}`
         )
-        if (!success) {
-          toastSubject.next({
-            title: 'Make Transaction Error',
-            description: 'Please try again, or contact us on discord',
-            status: 'error'
-          })
-          onCloseToast && onCloseToast()
-          return
-        }
-
-        const swapTransactions = data || []
-        const allTxBuf = swapTransactions.map((tx) => Buffer.from(tx.transaction, 'base64'))
-        const allTx = allTxBuf.map((txBuf) => (isV0Tx ? VersionedTransaction.deserialize(txBuf as any) : Transaction.from(txBuf)))
-
-        const signedTxs = await signAllTransactions(allTx)
-
-        console.log('simulate tx string:', signedTxs.map(txToBase64))
-
-        const txLength = signedTxs.length
-        const { toastId, handler } = getDefaultToastData({
-          txLength,
-          ...txProps
+        const allMints = poolsResp.data.map((r) => [r.mintA, r.mintB]).flat()
+        const [mintAProgram, mintBProgram] = [
+          allMints.find((m) => m.address === swapResponse.data.inputMint)!.programId,
+          allMints.find((m) => m.address === swapResponse.data.outputMint)!.programId,
+        ]
+        const inputAccount =  getATAAddress(publicKey, new PublicKey(swapResponse.data.inputMint), new PublicKey(mintAProgram)).publicKey
+        const outputAccount = getATAAddress(publicKey, new PublicKey(swapResponse.data.outputMint), new PublicKey(mintBProgram)).publicKey
+        
+        // const isV0Tx = txVersion === TxVersion.V0
+        // const {
+        //   data,
+        //   success
+        // }: {
+        //   id: string
+        //   success: true
+        //   version: 'V1'
+        //   msg?: string
+        //   data?: { transaction: string }[]
+        // } = await axios.post(
+        //   `${urlConfigs.SWAP_HOST}${urlConfigs.SWAP_TX}${swapResponse.data.swapType === 'BaseIn' ? 'swap-base-in' : 'swap-base-out'}`,
+        //   {
+        //     wallet: publicKey.toBase58(),
+        //     computeUnitPriceMicroLamports: new Decimal(computeData?.microLamports || 0).toFixed(0),
+        //     swapResponse,
+        //     txVersion: isV0Tx ? 'V0' : 'LEGACY',
+        //     wrapSol: isInputSol,
+        //     unwrapSol,
+        //     inputAccount: isInputSol ? undefined : inputAccount?.toBase58(),
+        //     outputAccount: isOutputSol ? undefined : outputAccount?.toBase58()
+        //   }
+        // )
+        // if (!success) {
+        //   toastSubject.next({
+        //     title: 'Make Transaction Error',
+        //     description: 'Please try again, or contact us on discord',
+        //     status: 'error'
+        //   })
+        //   onCloseToast && onCloseToast()
+        //   return [];
+        // }
+        const ins = swapResponse.data.swapType === "BaseIn" ? swapBaseInAutoAccount({
+          programId: ALL_PROGRAM_ID.Router,
+          wallet: publicKey,
+          amount: new BN(swapResponse.data.inputAmount),
+          inputAccount,
+          outputAccount,
+          routeInfo: swapResponse,
+          poolKeys: poolsResp.data,
+        }) : swapBaseInAutoAccount({
+          programId: ALL_PROGRAM_ID.Router,
+          wallet: publicKey,
+          amount: new BN(swapResponse.data.outputAmount),
+          inputAccount,
+          outputAccount,
+          routeInfo: swapResponse,
+          poolKeys: poolsResp.data,
         })
 
-        const swapMeta = getTxMeta({
-          action: 'swap',
-          values: {
-            amountA: formatLocaleStr(
-              new Decimal(swapResponse.data.inputAmount).div(10 ** (inputToken.decimals || 0)).toString(),
-              inputToken.decimals
-            )!,
-            symbolA: getMintSymbol({ mint: inputToken, transformSol: wrapSol }),
-            amountB: formatLocaleStr(
-              new Decimal(swapResponse.data.outputAmount).div(10 ** (outputToken.decimals || 0)).toString(),
-              outputToken.decimals
-            )!,
-            symbolB: getMintSymbol({ mint: outputToken, transformSol: unwrapSol })
-          }
+        const amount = swapResponse.data.swapType === "BaseIn" 
+          ? swapResponse.data.inputAmount 
+          : swapResponse.data.outputAmount;
+        const token = swapResponse.data.swapType === "BaseIn" ? inputToken : outputToken;
+        const tokenAmount = formatUnits(amount, token.decimals).toString();
+        const balance = balanceAddressMap[token.address];
+        if (!balance) throw new Error('invalid input')
+
+        const rent = await raydium.connection.getMinimumBalanceForRentExemption(165)
+        const rents = new Decimal(rent).mul(swapResponse.data.routePlan.length * 2);
+        const solAmount = formatUnits(rents.toString(), SOL_DECIMAL).toString()
+        const cc = initComputerClient();
+        const fee = await cc.getFeeOnXin(solAmount)
+
+        // const swapTransactions = data || []
+        // if (swapTransactions.length !== 1) throw new Error('invalid swap transaction'); //
+        // const buf = Buffer.from(swapTransactions[0].transaction, 'base64')
+        // let tx = VersionedTransaction.deserialize(buf as any);
+        // const res = await Promise.all(tx.message.addressTableLookups.map(a => connection.getAddressLookupTable(a.accountKey)))
+        // const alts = res.filter(r => r.value).map(r => r.value) as AddressLookupTableAccount[]
+        // const swapIxs = TransactionMessage.decompile(tx.message, {
+        //   addressLookupTableAccounts: alts
+        // }).instructions;
+
+        const nonce = await cc.getNonce(getUserMix())
+        const nonceIns = SystemProgram.nonceAdvance({
+          noncePubkey: new PublicKey(nonce.nonce_address),
+          authorizedPubkey: new PublicKey(info.payer)
         })
+        const messageV0 = new TransactionMessage({
+          payerKey: new PublicKey(info.payer),
+          recentBlockhash: nonce.nonce_hash,
+          instructions: [nonceIns, ins, ...computeIns], // add additional instructions here
+        }).compileToV0Message();
+        const tx = new VersionedTransaction(messageV0);
+        const txBuf = Buffer.from(tx.serialize());
+        const oversized = checkSystemCallSize(txBuf);
+        if (oversized) 
+          toastSubject.next({ status: "error", description: "Transaction too long", duration: null });
 
-        const processedId: {
-          txId: string
-          status: 'success' | 'error' | 'sent'
-          signedTx: Transaction | VersionedTransaction
-        }[] = []
+        const trace = uniqueConversationID(txBuf.toString("hex"), "system call");
+        const extra = buildComputerExtra(
+          info.members.app_id, 
+          OperationTypeSystemCall, 
+          buildSystemCallInvoiceExtra(account.id, trace, false, fee.fee_id)
+        )
 
-        const getSubTxTitle = (idx: number) => {
-          return idx === 0
-            ? 'transaction_history.set_up'
-            : idx === processedId.length - 1 && processedId.length > 2
-            ? 'transaction_history.clean_up'
-            : 'transaction_history.name_swap'
+        const invoice = newMixinInvoice(computer);
+        if (!invoice) throw new Error('invalid invoice recipient!');
+        attachStorageEntry(invoice, uniqueConversationID(trace, "storage"), txBuf)
+        attachInvoiceEntry(invoice, {
+          trace_id: uniqueConversationID(trace, balance.asset_id),
+          asset_id: balance.asset_id,
+          amount: tokenAmount,
+          extra: computerEmptyExtra,
+          index_references: [],
+          hash_references: []
+        })
+        attachInvoiceEntry(invoice, {
+          trace_id: trace,
+          asset_id: XIN_ASSET_ID,
+          amount: add(info.params.operation.price, fee.xin_amount).toFixed(8, BigNumber.ROUND_CEIL),
+          extra: Buffer.from(extra),
+          index_references: [0, 1],
+          hash_references: []
+        })
+        const url = handleInvoiceSchema(getInvoiceString(invoice));
+        console.log(invoice, url)
+        const scheme = await client.code.schemes(url)
+        const req = {
+          trace: trace,
+          value: `https://mixin.one/schemes/${scheme.scheme_id}`,
         }
-
-        let i = 0
-        const checkSendTx = async (): Promise<void> => {
-          if (!signedTxs[i]) return
-          const tx = signedTxs[i]
-          const txId = !isV0Tx
-            ? await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true, maxRetries: 0 })
-            : await connection.sendTransaction(tx as VersionedTransaction, { skipPreflight: true, maxRetries: 0 })
-          processedId.push({ txId, signedTx: tx, status: 'sent' })
-
-          if (signedTxs.length === 1) {
-            txStatusSubject.next({
-              txId,
-              ...swapMeta,
-              signedTx: tx,
-              onClose: onCloseToast,
-              isSwap: true,
-              mintInfo: [inputToken, outputToken],
-              ...txProps
-            })
-            return
-          }
-          let timeout = 0
-          let intervalId = 0
-          let intervalCount = 0
-
-          const cbk = (signatureResult: SignatureResult) => {
-            window.clearTimeout(timeout)
-            window.clearInterval(intervalId)
-            const targetTxIdx = processedId.findIndex((tx) => tx.txId === txId)
-            if (targetTxIdx > -1) processedId[targetTxIdx].status = signatureResult.err ? 'error' : 'success'
-            handleMultiTxRetry(processedId)
-            const isSlippageError = isSwapSlippageError(signatureResult)
-            handleMultiTxToast({
-              toastId,
-              processedId: processedId.map((p) => ({ ...p, status: p.status === 'sent' ? 'info' : p.status })),
-              txLength,
-              meta: {
-                ...swapMeta,
-                title: isSlippageError ? i18n.t('error.error.swap_slippage_error_title')! : swapMeta.title,
-                description: isSlippageError ? i18n.t('error.error.swap_slippage_error_desc')! : swapMeta.description
-              },
-              isSwap: true,
-              handler,
-              getSubTxTitle,
-              onCloseToast
-            })
-            if (!signatureResult.err) checkSendTx()
-          }
-
-          const subId = connection.onSignature(txId, cbk, 'processed')
-          connection.getSignatureStatuses([txId])
-
-          intervalId = window.setInterval(async () => {
-            const targetTxIdx = processedId.findIndex((tx) => tx.txId === txId)
-            if (intervalCount++ > TOAST_DURATION / 2000 || processedId[targetTxIdx].status !== 'sent') {
-              window.clearInterval(intervalId)
-              return
-            }
-            try {
-              const r = await connection.getTransaction(txId, { commitment: 'confirmed', maxSupportedTransactionVersion: TxVersion.V0 })
-              if (r) {
-                console.log('tx status from getTransaction:', txId)
-                cbk({ err: r.meta?.err || null })
-                window.clearInterval(intervalId)
-                useTokenAccountStore.getState().fetchTokenAccountAct({ commitment: useAppStore.getState().commitment })
-              }
-            } catch (e) {
-              console.error('getTransaction timeout:', e, txId)
-              window.clearInterval(intervalId)
-            }
-          }, 2000)
-
-          handleMultiTxRetry(processedId)
-          handleMultiTxToast({
-            toastId,
-            processedId: processedId.map((p) => ({ ...p, status: p.status === 'sent' ? 'info' : p.status })),
-            txLength,
-            meta: swapMeta,
-            isSwap: true,
-            handler,
-            getSubTxTitle,
-            onCloseToast
-          })
-
-          timeout = window.setTimeout(() => {
-            connection.removeSignatureListener(subId)
-          }, TOAST_DURATION)
-
-          i++
-        }
-        checkSendTx()
+        return [req]
       } catch (e: any) {
+        console.error(e)
         txProps.onError?.()
         if (e.message !== 'tx failed')
           toastSubject.next({ txError: typeof e === 'string' ? new Error(e) : e, title: 'Swap', description: 'Send transaction failed' })
       } finally {
         txProps.onFinally?.()
       }
-      return ''
+      return [];
     },
 
     unWrapSolAct: async ({ amount, onSent, onError, ...txProps }): Promise<string | undefined> => {

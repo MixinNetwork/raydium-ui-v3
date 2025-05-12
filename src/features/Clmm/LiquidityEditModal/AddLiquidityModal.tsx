@@ -41,6 +41,7 @@ import { useDisclosure } from '@/hooks/useDelayDisclosure'
 import { calRatio } from '../utils/math'
 import Decimal from 'decimal.js'
 import BN from 'bn.js'
+import { UserAssetBalance } from '@/types/computer'
 
 export default function AddLiquidityModal({
   isOpen,
@@ -88,6 +89,11 @@ export default function AddLiquidityModal({
 
   const [computePairAmount, increaseLiquidityAct] = useClmmStore((s) => [s.computePairAmount, s.increaseLiquidityAct], shallow)
   const [tokenAmount, setTokenAmount] = useState(['', ''])
+
+  const [balance, setBalance] = useState<{
+    token1?: UserAssetBalance;
+    token2?: UserAssetBalance;
+  }>({})
 
   const computeRef = useRef(false)
   const focusPoolARef = useRef(true)
@@ -307,6 +313,7 @@ export default function AddLiquidityModal({
             disableSelectToken
             pool={poolInfo}
             readonly={!poolInfo || featureDisabled}
+            tokenBalance={balance}
             tokenAmount={tokenAmount}
             onFocusChange={handleFocusChange}
             onAmountChange={handleAmountChange}

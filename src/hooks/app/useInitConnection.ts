@@ -164,14 +164,14 @@ function useInitConnection(props: SSRData) {
   }, [raydium, publicKey, signAllTransactions])
 
   // update publickey/wallet in app store
-  useEffect(() => {
-    const payload = {
-      connected: !!useWalletRef.current.publicKey,
-      publicKey: useWalletRef.current.publicKey || undefined,
-      wallet: walletRef.current || undefined
-    }
-    useAppStore.setState(payload, false, { type: 'useInitConnection', payload } as any)
-  }, [publicKey?.toBase58(), wallet?.adapter.name])
+  // useEffect(() => {
+  //   const payload = {
+  //     connected: !!useWalletRef.current.publicKey,
+  //     publicKey: useWalletRef.current.publicKey || undefined,
+  //     wallet: walletRef.current || undefined
+  //   }
+  //   useAppStore.setState(payload, false, { type: 'useInitConnection', payload } as any)
+  // }, [publicKey?.toBase58(), wallet?.adapter.name])
 
   useEffect(() => cancelAllRetry, [connection.rpcEndpoint])
   useEffect(() => {
