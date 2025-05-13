@@ -1,5 +1,5 @@
 import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram } from '@solana/web3.js'
-import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget } from '@raydium-io/raydium-sdk-v2'
+import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget, TxVersion } from '@raydium-io/raydium-sdk-v2'
 import BN from 'bn.js'
 import BigNumber from 'bignumber.js';
 import { createStore, useAppStore, useTokenStore } from '@/store'
@@ -18,6 +18,8 @@ import { buildComputerExtra, buildSystemCallInvoiceExtra, computerEmptyExtra, ha
 import { OperationTypeSystemCall, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { ComputerSystemCallRequest } from '@/types/computer'
 import { add } from '@/utils/number'
+import { getDefaultToastData, handleMultiTxToast, transformProcessData } from '@/hooks/toast/multiToastUtil';
+import { handleMultiTxRetry } from '@/hooks/toast/retryTx';
 
 const getSwapComputePrice = async () => {
   const transactionFee = useAppStore.getState().getPriorityFee()
