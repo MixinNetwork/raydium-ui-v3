@@ -181,9 +181,11 @@ export const useSwapStore = createStore<SwapStore>(
         }).compileToV0Message();
         const tx = new VersionedTransaction(messageV0);
         const txBuf = Buffer.from(tx.serialize());
-        const oversized = checkSystemCallSize(txBuf);
-        if (oversized) 
+        const valid = checkSystemCallSize(txBuf);
+        if (!valid) {
           toastSubject.next({ status: "error", description: "Transaction too long", duration: null });
+          return [];
+        }
 
         const trace = uniqueConversationID(txBuf.toString("hex"), "system call");
         const extra = buildComputerExtra(
