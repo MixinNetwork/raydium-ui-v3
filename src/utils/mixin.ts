@@ -6,8 +6,6 @@ import { attachInvoiceEntry, attachStorageEntry, base64RawURLEncode, buildMixAdd
 import { ComputerInfoResponse } from "@/types/computer";
 import { add } from "./number";
 
-export const computerEmptyExtra = Buffer.from('pzdhFF2zSCK9PCZBa1faGw');
-
 export const buildAssetId = (address: string) => {
   const res = md5(SOL_ASSET_ID + address);
   const bytes = Buffer.from(res, 'hex');
