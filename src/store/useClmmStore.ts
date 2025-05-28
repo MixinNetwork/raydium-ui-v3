@@ -48,8 +48,8 @@ import { ClmmLockInfo } from '@/hooks/portfolio/clmm/useClmmBalance'
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import { ComputerNonceResponse, ComputerSystemCallRequest, Token } from '@/types/computer'
-import { buildInvoiceWithEntries, buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema, computerEmptyExtra, buildAssetId } from '@/utils/mixin'
-import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, uniqueConversationID } from '@mixin.dev/mixin-node-sdk'
+import { buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema, buildAssetId } from '@/utils/mixin'
+import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, OperationTypeUserDeposit, uniqueConversationID, userIdToBytes } from '@mixin.dev/mixin-node-sdk'
 import { CREATE_POOL_RENT_SIZES, OPEN_POSITION_RENT_SIZES, OperationTypeSystemCall, SOL_ASSET_ID, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { initComputerClient } from '@/api/computer'
 import { add } from '@/utils/number'
@@ -471,6 +471,10 @@ export const useClmmStore = createStore<ClmmState>(
         sizes.forEach((size, index) => {
           rentMap[size] = rents[index]
         })
+        
+        const referenceExtra = Buffer.from(
+          buildComputerExtra(info.members.app_id, OperationTypeUserDeposit, userIdToBytes(account.id))
+        );
 
         const reqs: ComputerSystemCallRequest[] = [];
         const invoice = newMixinInvoice(computer);
@@ -532,7 +536,7 @@ export const useClmmStore = createStore<ClmmState>(
           trace_id: uniqueConversationID(trace2, token1.asset_id),
           asset_id: token1.asset_id,
           amount: amount1,
-          extra: computerEmptyExtra,
+          extra: referenceExtra,
           index_references: [],
           hash_references: []
         })
@@ -540,7 +544,7 @@ export const useClmmStore = createStore<ClmmState>(
           trace_id: uniqueConversationID(trace2, token2.asset_id),
           asset_id: token2.asset_id,
           amount: amount2,
-          extra: computerEmptyExtra,
+          extra: referenceExtra,
           index_references: [],
           hash_references: []
         })
@@ -614,6 +618,10 @@ export const useClmmStore = createStore<ClmmState>(
       const { fee: feeB = new BN(0) } = getTransferAmountFeeV2(_amountMinB, poolInfo.mintB.extensions.feeConfig, epochInfo!, false)
 
       try {
+        const referenceExtra = Buffer.from(
+          buildComputerExtra(info.members.app_id, OperationTypeUserDeposit, userIdToBytes(account.id))
+        );
+
         const close = !position.liquidity.eq(new BN(liquidity)) ? false : closePosition ?? position.liquidity.eq(new BN(liquidity))
         const rent =  await raydium.connection.getMinimumBalanceForRentExemption(165)
         const rentAmount = Math.floor(rent * 2 * 1.1);
@@ -669,7 +677,7 @@ export const useClmmStore = createStore<ClmmState>(
           trace_id: uniqueConversationID(trace, position.nftMint.toString()),
           asset_id: buildAssetId(position.nftMint.toString()),
           amount: "1",
-          extra: computerEmptyExtra,
+          extra: referenceExtra,
           index_references: [],
           hash_references: []
         })

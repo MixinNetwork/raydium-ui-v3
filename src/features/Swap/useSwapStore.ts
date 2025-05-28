@@ -13,8 +13,8 @@ import i18n from '@/i18n'
 import { fetchComputePrice } from '@/utils/tx/computeBudget'
 import { trimTailingZero } from '@/utils/numberish/formatter'
 import { initComputerClient } from '@/api/computer'
-import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, uniqueConversationID, checkSystemCallSize } from '@mixin.dev/mixin-node-sdk'
-import { buildComputerExtra, buildSystemCallInvoiceExtra, computerEmptyExtra, handleInvoiceSchema } from '@/utils/mixin'
+import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, uniqueConversationID, checkSystemCallSize, OperationTypeUserDeposit, userIdToBytes } from '@mixin.dev/mixin-node-sdk'
+import { buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema } from '@/utils/mixin'
 import { OperationTypeSystemCall, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { ComputerSystemCallRequest } from '@/types/computer'
 import { add } from '@/utils/number'
@@ -194,6 +194,10 @@ export const useSwapStore = createStore<SwapStore>(
           buildSystemCallInvoiceExtra(account.id, trace, false, fee.fee_id)
         )
 
+        const referenceExtra = Buffer.from(
+          buildComputerExtra(info.members.app_id, OperationTypeUserDeposit, userIdToBytes(account.id))
+        );
+
         const invoice = newMixinInvoice(computer);
         if (!invoice) throw new Error('invalid invoice recipient!');
         attachStorageEntry(invoice, uniqueConversationID(trace, "storage"), txBuf)
@@ -201,7 +205,7 @@ export const useSwapStore = createStore<SwapStore>(
           trace_id: uniqueConversationID(trace, balance.asset_id),
           asset_id: balance.asset_id,
           amount: tokenAmount,
-          extra: computerEmptyExtra,
+          extra: referenceExtra,
           index_references: [],
           hash_references: []
         })

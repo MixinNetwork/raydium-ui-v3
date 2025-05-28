@@ -3509,18 +3509,18 @@
     semver "^7.5.4"
     uuid "^9.0.1"
 
-"@mixin.dev/mixin-node-sdk@7.4.1":
-  version "7.4.1"
-  resolved "https://registry.npmjs.org/@mixin.dev/mixin-node-sdk/-/mixin-node-sdk-7.4.1.tgz#5ceb048a2ff5bf90c583e11b9e6412547cc83f7d"
-  integrity sha512-93YopQGNsCvJAXcTQYlqAVnzM9NHQC41Js3AoHZCCxBScPJ3hpvZum/da2PdoCKWROob++Ya73DcZYmWKGMRsw==
+"@mixin.dev/mixin-node-sdk@7.4.2":
+  version "7.4.2"
+  resolved "https://registry.npmjs.org/@mixin.dev/mixin-node-sdk/-/mixin-node-sdk-7.4.2.tgz#a09f7450b9bfddcce0323c1f0cb51a88b79e9dfa"
+  integrity sha512-UQ1Bia/6zyKLTW1nn7mPufKYK0Jjfb8dK8Lb7NUpvmU7Zvc137Gi9JUCJzSaaS2LLsK2dHUKBmf5/Ij3t5ZTHA==
   dependencies:
     "@noble/ciphers" "^1.0.0"
     "@noble/curves" "^1.2.0"
     "@noble/hashes" "^1.5.0"
     axios "1.8.2"
-    axios-retry "3.4.0"
+    axios-retry "4.5.0"
     bignumber.js "^9.1.2"
-    bs58 "^5.0.0"
+    bs58 "^6.0.0"
     int64-buffer "^1.0.1"
     is-retry-allowed "2.2.0"
     lodash.merge "^4.6.2"
@@ -8865,12 +8865,11 @@ axe-core@^4.4.3:
   resolved "https://registry.yarnpkg.com/axe-core/-/axe-core-4.4.3.tgz#11c74d23d5013c0fa5d183796729bc3482bd2f6f"
   integrity sha512-32+ub6kkdhhWick/UjvEwRchgoetXqTK14INLqbGm5U2TzBkBNF3nQtLYm8ovxSkQWArjEQvftCKryjZaATu3w==
 
-axios-retry@3.4.0:
-  version "3.4.0"
-  resolved "https://registry.npmjs.org/axios-retry/-/axios-retry-3.4.0.tgz#f464dbe9408e5aa78fa319afd38bb69b533d8854"
-  integrity sha512-VdgaP+gHH4iQYCCNUWF2pcqeciVOdGrBBAYUfTY+wPcO5Ltvp/37MLFNCmJKo7Gj3SHvCSdL8ouI1qLYJN3liA==
+axios-retry@4.5.0, axios-retry@^4.5.0:
+  version "4.5.0"
+  resolved "https://registry.npmjs.org/axios-retry/-/axios-retry-4.5.0.tgz#441fdc32cedf63d6abd5de5d53db3667afd4c39b"
+  integrity sha512-aR99oXhpEDGo0UuAlYcn2iGRds30k366Zfa05XWScR9QaQD4JYiP3/1Qt1u7YlefUOK+cn0CcwoL1oefavQUlQ==
   dependencies:
-    "@babel/runtime" "^7.15.4"
     is-retry-allowed "^2.2.0"
 
 axios@0.27.2, axios@^0.27.2:
@@ -9260,7 +9259,7 @@ bs58@5.0.0, bs58@^5.0.0:
   dependencies:
     base-x "^4.0.0"
 
-bs58@6.0.0:
+bs58@6.0.0, bs58@^6.0.0:
   version "6.0.0"
   resolved "https://registry.yarnpkg.com/bs58/-/bs58-6.0.0.tgz#a2cda0130558535dd281a2f8697df79caaf425d8"
   integrity sha512-PD0wEnEYg6ijszw/u8s+iI3H17cTymlrwkKhDhPZq+Sokl3AU4htyBFTjAeNAlCCmg0f53g6ih3jATyCKftTfw==
