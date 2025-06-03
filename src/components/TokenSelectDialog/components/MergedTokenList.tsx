@@ -97,7 +97,7 @@ export default forwardRef<
         return {
           address: a.address,
           chainId: 101,
-          decimals: a.asset.precision,
+          decimals: a.decimals,
           extensions: {},
           logoURI: a.uri,
           name: a.asset.name,

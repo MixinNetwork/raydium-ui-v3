@@ -95,10 +95,11 @@ export default forwardRef<
       const uri = balance.asset.chain_id !== SOL_ASSET_ID 
         ? computerAssetAddressMap[balance.address].uri 
         : balance.asset.icon_url;
+      const decimals = balance.asset.chain_id === SOL_ASSET_ID ? balance.asset.precision : 8;
       prev.push({
         address: balance.address,
         chainId: 101,
-        decimals: balance.asset.precision,
+        decimals,
         extensions: {},
         logoURI: uri,
         name: balance.asset.name,
