@@ -153,7 +153,7 @@ export const useTokenStore = createStore<TokenStore>(
         return {
           address: address,
           chainId: 101,
-          decimals: ca.asset.precision,
+          decimals: ca.decimals,
           extensions: {},
           logoURI: ca.uri,
           name: ca.asset.name,
@@ -163,60 +163,6 @@ export const useTokenStore = createStore<TokenStore>(
           priority: 90,
         } as TokenInfo
       return undefined
-      // const { balanceAddressMap, connection } = useAppStore.getState()
-      // const assetId = buildAssetId(address);
-      // const b = balanceAddressMap[address]
-      // const c = NetworkClient();
-
-      // if (am[address]) {
-      //   const asset = b ? b.asset : (await c.fetchAsset(assetId));
-      //   const info = {
-      //     address: address,
-      //     chainId: 101,
-      //     decimals: asset.precision,
-      //     extensions: {},
-      //     logoURI: am[address].uri,
-      //     name: asset.name,
-      //     programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-      //     symbol: asset.symbol,
-      //     tags: [],
-      //     priority: 90,
-      //   };
-      //   const balance = b ?? {
-      //     asset_id: assetId,
-      //     total_amount: "0",
-      //     outputs: [],
-      //     address,
-      //     asset
-      //   }
-      //   return {
-      //     info,
-      //     balance
-      //   }
-      // }
-
-      // const info = tokenMap.get(address) ?? (await getTokenInfo({ mint: address, connection }));
-      // if (!info) return undefined;
-      // if (b) {
-      //   return {
-      //     info: info,
-      //     balance: b,
-      //   }
-      // }
-      // const asset = await c.fetchAsset(assetId);
-      // if (asset) {
-      //   return {
-      //     info: info,
-      //     balance: {
-      //       asset_id: assetId,
-      //       total_amount: "0",
-      //       outputs: [],
-      //       address,
-      //       asset
-      //     },
-      //   }
-      // }
-      // return tokenMap.get(address)
     },
 
     loadTokensAct: (forceUpdate?: boolean, jupTokenType?: JupTokenType) => {

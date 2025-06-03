@@ -372,6 +372,8 @@ export const useClmmStore = createStore<ClmmState>(
           getEphemeralSigners: wallet ? await getEphemeralSigners(wallet) : undefined,
           txVersion,
         }
+        console.log(baseAmount, otherAmountMax)
+        console.log(params.baseAmount.toString(), params.otherAmountMax.toString())
         let ownerTokenAccountA: PublicKey | null = null;
         let ownerTokenAccountB: PublicKey | null = null;
         const mintAUseSOLBalance = params.ownerInfo.useSOLBalance && poolInfo.mintA.address === WSOLMint.toString();
@@ -621,7 +623,7 @@ export const useClmmStore = createStore<ClmmState>(
         const referenceExtra = Buffer.from(
           buildComputerExtra(info.members.app_id, OperationTypeUserDeposit, userIdToBytes(account.id))
         );
-        
+
         const close = !position.liquidity.eq(new BN(liquidity)) ? false : closePosition ?? position.liquidity.eq(new BN(liquidity))
         const rent =  await raydium.connection.getMinimumBalanceForRentExemption(165)
         const rentAmount = Math.floor(rent * 2 * 1.1);

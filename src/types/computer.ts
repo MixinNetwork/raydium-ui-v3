@@ -28,6 +28,7 @@ export interface ComputerAssetResponse {
   asset_id: string;
   address: string;
   uri: string;
+  decimals: number;
 }
 
 export interface ComputerAsset extends ComputerAssetResponse {
