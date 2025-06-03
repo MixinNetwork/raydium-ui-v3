@@ -673,7 +673,7 @@ export const useClmmStore = createStore<ClmmState>(
         const invoice = newMixinInvoice(computer);
         if (!invoice) throw new Error('computer connection failed');
         attachStorageEntry(invoice, uniqueConversationID(trace, "storage"), memo)
-        if (close) attachInvoiceEntry(invoice, {
+        attachInvoiceEntry(invoice, {
           trace_id: uniqueConversationID(trace, position.nftMint.toString()),
           asset_id: buildAssetId(position.nftMint.toString()),
           amount: "1",
