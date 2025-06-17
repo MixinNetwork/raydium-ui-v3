@@ -1,4 +1,4 @@
-export const VERSION = process.env.NEXT_PUBLIC_VERSION ?? 'staging' as 'staging' | 'prod';
+export const VERSION = 'prod';
 
 export const isStaging = () => {
   return VERSION !== 'prod';
@@ -9,8 +9,8 @@ export const getEnvConfig = () => {
     ? {
         api: 'https://computer.mixin.dev/',
       }
-    : { // FIXME
-        api: 'https://computer.mixin.dev/',
+    : {
+        api: 'https://computer.mixin.one/',
       };
 };
 
