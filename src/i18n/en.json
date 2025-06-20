@@ -868,6 +868,6 @@
     "register_success": "Register Success!",
     "deploying_assets": "Deploying assets...",
     "deploy_success": "Asset Deployment Success!",
-    "traces": "{{index}}-th Transactions, {{total}} in total."
+    "traces": "{{index}} Transaction, {{total}} in total."
   }
 }
