@@ -18,8 +18,17 @@ export function MixinMultipleTracesModal(props: MixinModalProps) {
   console.log(props.requests)
   
   const [index, setIndex] = useState(0);
+  const [ordinal, setOrdinal] = useState('');
 
+  const getOrdinal = (n :number) => {
+    const v = n % 10;
+    if (v === 1) return `${n}-st`;
+    else if (v === 2) return `${n}-nd`;
+    else if (v === 3) return `${n}-rd`;
+    else return `${n}-th`;
+  };
   useEffect(() => {
+    setOrdinal(getOrdinal(index+1))
     const timer = setInterval(async () => {
       const trace = props.requests[index].trace;
       try {
@@ -41,7 +50,7 @@ export function MixinMultipleTracesModal(props: MixinModalProps) {
       <ModalContent minW={['auto', '320px']}>
         <ModalBody>
           <Flex direction={"column"} alignItems={"center"}>        
-            <Text mb={4} align={"center"}>{ t('computer.traces', { index: index + 1, total: props.requests.length }) }</Text>
+            <Text mb={4} align={"center"}>{ t('computer.traces', { index: ordinal, total: props.requests.length }) }</Text>
             <Box width={256} height={256} borderRadius={"xl"} overflow={"hidden"}>
                 {
                   <QrCode value={props.requests[index].value}/>
