@@ -550,12 +550,14 @@ export const useClmmStore = createStore<ClmmState>(
           index_references: [],
           hash_references: []
         })
+        let refs = preLen > 0 ? [preLen - 1] : [];
+        refs = [...refs, ...new Array(3).fill(0).map((_, i) => i + preLen)]
         attachInvoiceEntry(invoice, {
             trace_id: trace2,
             asset_id: XIN_ASSET_ID,
             amount: add(info.params.operation.price, fee.xin_amount).toFixed(8, BigNumber.ROUND_CEIL),
             extra: Buffer.from(extra2),
-            index_references: new Array(3).fill(0).map((_, i) => i + preLen),
+            index_references: refs,
             hash_references: []
         })
         

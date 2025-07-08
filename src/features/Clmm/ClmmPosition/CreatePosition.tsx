@@ -1,5 +1,5 @@
 import { Box, Flex, Grid, GridItem, HStack, Tag, Text, useDisclosure } from '@chakra-ui/react'
-import { ApiV3PoolInfoConcentratedItem, ApiV3Token, PoolFetchType, solToWSol } from '@raydium-io/raydium-sdk-v2'
+import { ApiV3PoolInfoConcentratedItem, ApiV3Token, PoolFetchType, SOLMint, solToWSol, WSOLMint } from '@raydium-io/raydium-sdk-v2'
 import { useRouter } from 'next/router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -190,12 +190,14 @@ export default function CreatePosition() {
     [baseIn, clmmData?.mintA.decimals, clmmData?.mintB.decimals]
   )
 
+  const balanceA = tokens.mintA ? balanceAddressMap[tokens.mintA.address === WSOLMint.toString() ? SOLMint.toString() : tokens.mintA.address]?.total_amount : 0
+  const balanceB = tokens.mintB ? balanceAddressMap[tokens.mintB.address === WSOLMint.toString() ? SOLMint.toString() : tokens.mintB.address]?.total_amount : 0
   const error = useValidate({
     poolId,
     priceRange,
     tokenAmount,
-    balanceA: tokens.mintA ? balanceAddressMap[tokens.mintA.address]?.total_amount : 0,
-    balanceB: tokens.mintB ? balanceAddressMap[tokens.mintB.address]?.total_amount : 0
+    balanceA,
+    balanceB
   })
 
   const formatDecimalToDigit = useCallback(
