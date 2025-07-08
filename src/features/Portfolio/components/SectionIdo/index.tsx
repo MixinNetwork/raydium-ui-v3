@@ -1,4 +1,4 @@
-import useFetchOwnerIdo from '@/hooks/portfolio/useFetchOwnerIdo'
+import { OwnerFullData } from '@/hooks/portfolio/useFetchOwnerIdo'
 import useFetchIdoKeys from '@/hooks/portfolio/useFetchIdoKeys'
 import { colors } from '@/theme/cssVariables/colors'
 import { Box, Heading, Text, VStack } from '@chakra-ui/react'
@@ -10,9 +10,11 @@ export default function SectionAcceleraytor() {
   const { t } = useTranslation()
 
   const publicKey = useAppStore((s) => s.publicKey)
-  const { formattedData, isLoading } = useFetchOwnerIdo({
-    owner: publicKey?.toString()
-  })
+  const formattedData: OwnerFullData[] = [];
+  const isLoading = false;
+  // const { formattedData, isLoading } = useFetchOwnerIdo({
+  //   owner: publicKey?.toString()
+  // })
   const { dataMap: keysDataMap } = useFetchIdoKeys({ idList: formattedData.map((d) => d.poolId) })
   if ((!isLoading && !formattedData.length) || formattedData.length === 0) return null
 

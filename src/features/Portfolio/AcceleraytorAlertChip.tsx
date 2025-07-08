@@ -1,5 +1,5 @@
 import { HStack, Text, useDisclosure } from '@chakra-ui/react'
-import useFetchOwnerIdo from '@/hooks/portfolio/useFetchOwnerIdo'
+import { OwnerFullData } from '@/hooks/portfolio/useFetchOwnerIdo'
 import { useAppStore } from '@/store'
 import { AlertChip } from '../../components/AlertChip'
 import { useTranslation } from 'react-i18next'
@@ -9,17 +9,18 @@ import { useEffect } from 'react'
 export function AcceleraytorAlertChip() {
   const { t } = useTranslation()
   const publicKey = useAppStore((s) => s.publicKey)
-  const idoInfo = useFetchOwnerIdo({
-    owner: publicKey?.toString()
-  })
-  const { isOpen, onClose, onOpen } = useDisclosure({ defaultIsOpen: idoInfo.formattedData.length > 0 })
+  const formattedData: OwnerFullData[] = [];
+  // const idoInfo = useFetchOwnerIdo({
+  //   owner: publicKey?.toString()
+  // })
+  const { isOpen, onClose, onOpen } = useDisclosure({ defaultIsOpen: formattedData.length > 0 })
   useEffect(() => {
-    if (idoInfo.formattedData.length > 0) {
+    if (formattedData.length > 0) {
       onOpen()
     } else {
       onClose()
     }
-  }, [idoInfo.formattedData])
+  }, [formattedData])
   return (
     <AlertChip
       isOpen={isOpen}

@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { RAYMint, ApiV3Token } from '@raydium-io/raydium-sdk-v2'
 
 import { useTokenAccountStore, useTokenStore } from '@/store'
-import useFarmPositions from '@/hooks/portfolio/farm/useFarmPositions'
+import { FarmPositionInfo } from '@/hooks/portfolio/farm/useFarmPositions'
 import useFetchAccLpMint from '@/hooks/token/useFetchAccLpMint'
 import useTokenPrice from '@/hooks/token/useTokenPrice'
 
@@ -12,7 +12,8 @@ export default function useAllStandardPoolPosition<T>({ type }: { type?: T }) {
   const getTokenBalanceUiAmount = useTokenAccountStore((s) => s.getTokenBalanceUiAmount)
   const tokenPriceRecord = useTokenStore((s) => s.tokenPriceRecord)
 
-  const { lpBasedData } = useFarmPositions({})
+  const lpBasedData: Map<string, FarmPositionInfo> = new Map();
+  // const { lpBasedData } = useFarmPositions({})
   const allLpInfo = new Map(
     Array.from(lpBasedData.values())
       .filter((d) => d.hasAmount && d.lpMint !== RAYMint.toString())
