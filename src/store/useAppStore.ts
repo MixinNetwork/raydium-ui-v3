@@ -291,6 +291,17 @@ export const useAppStore = createStore<AppState>(
         outputs: [],
         address: "11111111111111111111111111111111"
       }
+      const cc = initComputerClient();
+      const cas = await cc.fetchAssets();
+      cas.forEach(a => {
+        if (bm[a.asset_id]) return;
+        bm[a.asset_id] = {
+          asset_id: a.asset_id,
+          total_amount: "0",
+          outputs: [],
+          address: a.address
+        }
+      });
 
       const assets = await client.safe.fetchAssets(Object.keys(bm));
       const fbm = assets.reduce((prev, cur) => {
