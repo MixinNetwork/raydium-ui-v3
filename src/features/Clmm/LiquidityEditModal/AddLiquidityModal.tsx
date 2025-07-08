@@ -41,7 +41,10 @@ import { useDisclosure } from '@/hooks/useDelayDisclosure'
 import { calRatio } from '../utils/math'
 import Decimal from 'decimal.js'
 import BN from 'bn.js'
-import { UserAssetBalance } from '@/types/computer'
+import { ComputerSystemCallRequest, UserAssetBalance } from '@/types/computer'
+import { MixinMultipleTracesModal } from '@/components/Mixin/MixinMultipleTracesModal'
+import { initComputerClient } from '@/api/computer'
+import { toastSubject } from '@/hooks/toast/useGlobalToast'
 
 export default function AddLiquidityModal({
   isOpen,
@@ -95,6 +98,9 @@ export default function AddLiquidityModal({
     token2?: UserAssetBalance;
   }>({})
 
+  const [requests, setRequests] = useState<ComputerSystemCallRequest[]>([])
+  const { isOpen: isTraceModalOpen, onOpen: onOpenTraceModal, onClose: onCloseTraceModal } = useDisclosure()
+  
   const computeRef = useRef(false)
   const focusPoolARef = useRef(true)
   const tickPriceRef = useRef<{ tickLower?: number; tickUpper?: number; priceLower?: string; priceUpper?: string; liquidity?: BN }>({
@@ -190,6 +196,52 @@ export default function AddLiquidityModal({
     onSyncSending(sending)
     return () => onSyncSending(false)
   }, [sending, onSyncSending])
+
+  const addLiquidity = async () => {
+    setIsSending(true)
+    const res = await increaseLiquidityAct({
+      poolInfo,
+      position,
+      liquidity: tickPriceRef.current.liquidity!,
+      amountMaxA: new Decimal(tokenAmount[0]!).mul(10 ** poolInfo.mintA.decimals).toFixed(0),
+      amountMaxB: new Decimal(tokenAmount[1]!).mul(10 ** poolInfo.mintB.decimals).toFixed(0),
+      onCloseToast: () => setIsSending(false),
+      onConfirmed: () => {
+        setIsSending(false)
+        handleCloseModal()
+      },
+      onError: () => {
+        handleClick()
+        setIsSending(false)
+      }
+    })
+    setRequests(res);
+    onOpenTraceModal();
+  }
+  useEffect(() => {
+    if (requests.length === 0) return;
+    const client = initComputerClient();
+    const timer = setInterval(async () => {
+      try {
+        const call = await client.fetchCall(requests[requests.length - 1].trace);
+        if (call.state === 'done') {
+          onClose()
+          clearInterval(timer);
+        } else if (call.state === 'failed') {
+          setIsSending(false);
+          onClose();
+          toastSubject.next({
+            status: 'error',
+            description: 'transation failed'
+          });
+          clearInterval(timer);
+        }
+      } catch {
+        // console.log(err)
+      }
+    }, 1000 * 5);
+    return () => clearInterval(timer);
+  }, [requests])
 
   return (
     <Modal isOpen={isOpen} onClose={handleCloseModal} size="lg">
@@ -346,25 +398,7 @@ export default function AddLiquidityModal({
             isLoading={sending}
             loadingText={t('liquidity.add_liquidity') + '...'}
             isDisabled={!!error || featureDisabled}
-            onClick={() => {
-              setIsSending(true)
-              increaseLiquidityAct({
-                poolInfo,
-                position,
-                liquidity: tickPriceRef.current.liquidity!,
-                amountMaxA: new Decimal(tokenAmount[0]!).mul(10 ** poolInfo.mintA.decimals).toFixed(0),
-                amountMaxB: new Decimal(tokenAmount[1]!).mul(10 ** poolInfo.mintB.decimals).toFixed(0),
-                onCloseToast: () => setIsSending(false),
-                onConfirmed: () => {
-                  setIsSending(false)
-                  handleCloseModal()
-                },
-                onError: () => {
-                  handleClick()
-                  setIsSending(false)
-                }
-              })
-            }}
+            onClick={addLiquidity}
           >
             {featureDisabled ? t('common.disabled') : error || t('button.confirm')}
           </Button>
@@ -373,6 +407,11 @@ export default function AddLiquidityModal({
           </Button>
         </ModalFooter>
       </ModalContent>
+
+      {
+        requests.length > 0 && isTraceModalOpen &&
+        <MixinMultipleTracesModal isOpen={isTraceModalOpen} onClose={onCloseTraceModal} requests={requests}/>
+      }
     </Modal>
   )
 }
