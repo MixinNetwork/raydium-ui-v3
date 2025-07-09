@@ -291,6 +291,7 @@ export const useAppStore = createStore<AppState>(
         outputs: [],
         address: "11111111111111111111111111111111"
       }
+
       const cc = initComputerClient();
       const cas = await cc.fetchAssets();
       cas.forEach(a => {

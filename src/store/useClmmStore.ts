@@ -373,8 +373,7 @@ export const useClmmStore = createStore<ClmmState>(
           getEphemeralSigners: wallet ? await getEphemeralSigners(wallet) : undefined,
           txVersion,
         }
-        console.log(baseAmount, otherAmountMax)
-        console.log(params.baseAmount.toString(), params.otherAmountMax.toString())
+
         let ownerTokenAccountA: PublicKey | null = null;
         let ownerTokenAccountB: PublicKey | null = null;
         const mintAUseSOLBalance = params.ownerInfo.useSOLBalance && poolInfo.mintA.address === WSOLMint.toString();
@@ -551,6 +550,7 @@ export const useClmmStore = createStore<ClmmState>(
           index_references: [],
           hash_references: []
         })
+
         let refs = preLen > 0 ? [preLen - 1] : [];
         refs = [...refs, ...new Array(3).fill(0).map((_, i) => i + preLen)]
         attachInvoiceEntry(invoice, {
