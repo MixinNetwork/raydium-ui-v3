@@ -6,15 +6,11 @@ import useAllStandardPoolPosition from '@/hooks/portfolio/useAllStandardPoolPosi
 import PortfolioIdle from './components/PortfolioIdle'
 import PortfolioInfo from './components/PortfolioInfo'
 import useTokenBalance from '@/hooks/portfolio/useTokenBalance'
-import useFetchStakePools from '@/hooks/pool/useFetchStakePools'
-import useFetchFarmBalance from '@/hooks/farm/useFetchFarmBalance'
-import useFarmPositions from '@/hooks/portfolio/farm/useFarmPositions'
 import useTokenPrice from '@/hooks/token/useTokenPrice'
 import Decimal from 'decimal.js'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/store'
 import { RAYMint } from '@raydium-io/raydium-sdk-v2'
-import { PublicKey } from '@solana/web3.js'
 
 export enum AssetType {
   STANDARD = 'Standard',

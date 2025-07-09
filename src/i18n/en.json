@@ -867,7 +867,7 @@
     "registered": "You are already registered!",
     "register_success": "Register Success!",
     "deploying_assets": "Deploying assets...",
-    "deploy_success": "Asset Deployment Success!",    
+    "deploy_success": "Asset Deployment Success!",
     "traces": "{{index}} Transaction, {{total}} in total."
   }
 }

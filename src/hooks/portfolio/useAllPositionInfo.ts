@@ -5,7 +5,7 @@ import { FormatFarmInfoOutV6, ApiV3PoolInfoConcentratedItem, ApiV3Token, getATAA
 import useFetchPoolById from '../pool/useFetchPoolById'
 
 import { useTokenAccountStore } from '@/store'
-import useFarmPositions from '@/hooks/portfolio/farm/useFarmPositions'
+import { FarmPositionInfo } from '@/hooks/portfolio/farm/useFarmPositions'
 import useFetchMultipleFarmInfo from '@/hooks/farm/useFetchMultipleFarmInfo'
 import useFetchMultipleFarmBalance from '@/hooks/farm/useFetchMultipleFarmBalance'
 import useTokenPrice from '@/hooks/token/useTokenPrice'
@@ -124,14 +124,16 @@ export default function useAllPositionInfo({ shouldFetch = true }: { shouldFetch
     if (tickSlot !== 0 && clmmPositionSlot !== 0 && clmmPositionSlot > tickSlot) refreshClmmTicks()
   }, [tickSlot, clmmPositionSlot, refreshClmmTicks])
 
+  const lpBasedData: Map<string, FarmPositionInfo> = new Map();
+  const farmBasedData: Map<string, FarmPositionInfo> = new Map();
   // fetch farm position info
-  const {
-    farmBasedData,
-    lpBasedData,
-    mutate: mutateFarmPos
-  } = useFarmPositions({
-    shouldFetch
-  })
+  // const {
+  //   farmBasedData,
+  //   lpBasedData,
+  //   mutate: mutateFarmPos
+  // } = useFarmPositions({
+  //   shouldFetch
+  // })
   const {
     data: stakedFarmList,
     formattedDataMap: stakedFarmMap,
@@ -281,7 +283,7 @@ export default function useAllPositionInfo({ shouldFetch = true }: { shouldFetch
   const handleRefresh = useEvent(() => {
     fetchTokenAccountAct({})
     mutatePoolInfo()
-    mutateFarmPos()
+    // mutateFarmPos()
     mutateFarmsInfo()
     mutateFarmBalance()
     useTokenAccountStore.setState({ refreshClmmPositionTag: Date.now(), refreshCpmmPositionTag: Date.now() })
@@ -291,7 +293,7 @@ export default function useAllPositionInfo({ shouldFetch = true }: { shouldFetch
     setIsSending(true)
 
     const handleRefreshFarm = () => {
-      mutateFarmPos()
+      // mutateFarmPos()
       mutateFarmsInfo()
       mutateFarmBalance()
     }

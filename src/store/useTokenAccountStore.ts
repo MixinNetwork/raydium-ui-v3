@@ -28,6 +28,7 @@ import { retry } from '@/utils/common'
 import Decimal from 'decimal.js'
 import BN from 'bn.js'
 import logMessage from '@/utils/log'
+import { SOL_ASSET_ID } from '@/utils/constant'
 
 export interface TokenAccountStore {
   tokenAccounts: TokenAccount[]
@@ -285,27 +286,12 @@ export const useTokenAccountStore = createStore<TokenAccountStore>(
         gt: () => false
       }
 
-      const tokenInfo = useTokenStore.getState().tokenMap.get(mint)
-      const tokenDecimal = decimals ?? tokenInfo?.decimals ?? 6
-      const tokenAccount =
-        get()
-          .tokenAccountMap.get(mint)
-          ?.find((acc) => acc.isAssociated || acc.isNative === isNative) || get().tokenAccountMap.get(mint)?.[0]
-      if (!tokenAccount) return defaultVal
-      if (!tokenInfo && decimals === undefined) return defaultVal
+      const tokenInfo = useAppStore.getState().balanceAddressMap[mint];
+      const tokenDecimal = tokenInfo?.asset.chain_id === SOL_ASSET_ID ? tokenInfo?.asset.precision : 8;
+      if (!tokenInfo) return defaultVal
 
-      let amount = new Decimal(tokenAccount.amount.toString())
-      // wsol might have lots of ata, so sum them up
-      if (mint === WSOLMint.toBase58()) {
-        amount = new Decimal(0)
-        get()
-          .tokenAccountMap.get(mint)!
-          .forEach((acc) => {
-            amount = amount.add(acc.amount.toString())
-          })
-      }
-
-      const decimalAmount = new Decimal(amount.toString()).div(10 ** tokenDecimal)
+      const decimalAmount = new Decimal(tokenInfo.total_amount)
+      let amount = decimalAmount.mul(10 ** tokenDecimal)
 
       return {
         rawAmount: amount,

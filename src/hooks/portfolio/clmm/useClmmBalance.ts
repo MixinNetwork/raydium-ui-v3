@@ -83,8 +83,8 @@ export default function useClmmBalance({
   clmmLockProgramId?: string | PublicKey
   refreshInterval?: number
 }) {
-  const [connection, CLMM_PROGRAM_ID, CLMM_LOCK_PROGRAM_ID, tokenAccLoaded, owner] = useAppStore(
-    (s) => [s.connection, s.programIdConfig.CLMM_PROGRAM_ID, s.programIdConfig.CLMM_LOCK_PROGRAM_ID, s.tokenAccLoaded, s.publicKey],
+  const [connection, CLMM_PROGRAM_ID, CLMM_LOCK_PROGRAM_ID, tokenAccLoaded, owner, balanceAddressMap] = useAppStore(
+    (s) => [s.connection, s.programIdConfig.CLMM_PROGRAM_ID, s.programIdConfig.CLMM_LOCK_PROGRAM_ID, s.tokenAccLoaded, s.publicKey, s.balanceAddressMap],
     shallow
   )
   const clmmProgramId = programId || CLMM_PROGRAM_ID
@@ -96,7 +96,6 @@ export default function useClmmBalance({
   useRefreshEpochInfo()
 
   const balanceMints = useMemo(() => {
-    const balanceAddressMap = useAppStore.getState().balanceAddressMap
     return tokenAccountRawInfos.filter((acc) => {
       const asset = balanceAddressMap[acc.accountInfo.mint.toString()];
       return asset && eq(asset.total_amount, "1") && 
@@ -104,7 +103,7 @@ export default function useClmmBalance({
         asset.asset.asset_id !== SOL_ASSET_ID &&
         asset.asset.name.includes('Liquidity')
     })
-  }, [tokenAccountRawInfos])
+  }, [tokenAccountRawInfos, balanceAddressMap])
 
   const allLockMints = useMemo(
     () =>

@@ -7,6 +7,7 @@ import { NATIVE_MINT } from '@solana/spl-token'
 import { PublicKey } from '@solana/web3.js'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
+import { SOL_ASSET_ID } from '@/utils/constant'
 
 export type { TokenPrice }
 
@@ -35,6 +36,7 @@ export default function useTokenPrice(props: { mintList: (string | PublicKey | u
   const MINT_PRICE = useAppStore((s) => s.urlConfigs.MINT_PRICE)
   const [startFetch, setStartFetch] = useState(timeout === 0)
   const [refreshTag, setRefreshTag] = useState(Date.now())
+  const balances = useAppStore((s) => s.balances)
 
   const readyList = useMemo(
     () => Array.from(new Set(mintList.filter((m) => !!m && isValidPublicKey(m)).map((m) => solToWSol(m!).toString()))),
@@ -67,6 +69,14 @@ export default function useTokenPrice(props: { mintList: (string | PublicKey | u
     Array.from(tokenPriceRecord.entries()).forEach((data) => {
       if (data[1].data) prices[data[0]] = data[1].data
     })
+
+    Object.values(balances).forEach(b => {
+      if (b.asset.chain_id === SOL_ASSET_ID || !b.address) return;
+      prices[b.address] = {
+        value: Number(b.asset.price_usd)
+      }
+    })
+
     return prices
   }, [data, tokenPriceRecord])
 
