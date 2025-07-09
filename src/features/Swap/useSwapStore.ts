@@ -1,5 +1,5 @@
 import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram } from '@solana/web3.js'
-import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget, TxVersion } from '@raydium-io/raydium-sdk-v2'
+import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget, TxVersion, WSOLMint, SOLMint } from '@raydium-io/raydium-sdk-v2'
 import BN from 'bn.js'
 import BigNumber from 'bignumber.js';
 import { createStore, useAppStore, useTokenStore } from '@/store'
@@ -20,6 +20,7 @@ import { ComputerSystemCallRequest } from '@/types/computer'
 import { add } from '@/utils/number'
 import { getDefaultToastData, handleMultiTxToast, transformProcessData } from '@/hooks/toast/multiToastUtil';
 import { handleMultiTxRetry } from '@/hooks/toast/retryTx';
+import { routeWrapSOLInstuction } from '@/utils/insturction';
 
 const getSwapComputePrice = async () => {
   const transactionFee = useAppStore.getState().getPriorityFee()
@@ -150,7 +151,8 @@ export const useSwapStore = createStore<SwapStore>(
           : swapResponse.data.outputAmount;
         const token = swapResponse.data.swapType === "BaseIn" ? inputToken : outputToken;
         const tokenAmount = formatUnits(amount, token.decimals).toString();
-        const balance = balanceAddressMap[token.address];
+        const address = token.address === WSOLMint.toString() ? SOLMint.toString() : token.address;
+        const balance = balanceAddressMap[address];
         if (!balance) throw new Error('invalid input')
 
         const rent = await raydium.connection.getMinimumBalanceForRentExemption(165)
@@ -174,10 +176,18 @@ export const useSwapStore = createStore<SwapStore>(
           noncePubkey: new PublicKey(nonce.nonce_address),
           authorizedPubkey: new PublicKey(info.payer)
         })
+
+        const instructions = [nonceIns];
+        if (token.address === WSOLMint.toString()) {
+            instructions.push(routeWrapSOLInstuction(publicKey, inputAccount, WSOLMint, BigInt(swapResponse.data.inputAmount)))
+        }
+        instructions.push(ins)
+        instructions.push(...computeIns)
+        
         const messageV0 = new TransactionMessage({
           payerKey: new PublicKey(info.payer),
           recentBlockhash: nonce.nonce_hash,
-          instructions: [nonceIns, ins, ...computeIns], // add additional instructions here
+          instructions,
         }).compileToV0Message();
         const tx = new VersionedTransaction(messageV0);
         const txBuf = Buffer.from(tx.serialize());
