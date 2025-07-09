@@ -415,7 +415,7 @@ export function SwapPanel({
           <SwapPriceUpdatedAlert onConfirm={onPriceUpdatedConfirm} />
         </Box>
       </Collapse>
-      {isSolFeeNotEnough ? (
+      {/* {isSolFeeNotEnough ? (
         <Flex
           rounded="xl"
           p="2"
@@ -430,8 +430,8 @@ export function SwapPanel({
           <WarningIcon style={{ marginTop: '2px', marginRight: '4px' }} stroke={colors.semanticError} />
           <Text>{t('swap.error_sol_fee_not_insufficient', { amount: formatToRawLocaleStr(DEFAULT_SOL_RESERVER) })}</Text>
         </Flex>
-      ) : null}
-      {wsolBalance.isZero ? null : (
+      ) : null} */}
+      {/* {wsolBalance.isZero ? null : (
         <Flex
           rounded="md"
           mt="-2"
@@ -456,7 +456,7 @@ export function SwapPanel({
             }}
           />
         </Flex>
-      )}
+      )} */}
       {inputFeeConfig || outputFeeConfig ? (
         <Flex mt="-1" mb="4">
           {inputFeeConfig && tokenInput ? (
