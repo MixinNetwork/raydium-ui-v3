@@ -288,7 +288,7 @@ export const useTokenAccountStore = createStore<TokenAccountStore>(
 
       const tokenInfo = useAppStore.getState().balanceAddressMap[mint];
       const tokenDecimal = tokenInfo?.asset.chain_id === SOL_ASSET_ID ? tokenInfo?.asset.precision : 8;
-      if (!tokenInfo) return defaultVal
+      if (!tokenInfo || tokenInfo.hide) return defaultVal
 
       const decimalAmount = new Decimal(tokenInfo.total_amount)
       let amount = decimalAmount.mul(10 ** tokenDecimal)
