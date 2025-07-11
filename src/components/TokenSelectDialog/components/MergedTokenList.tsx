@@ -100,9 +100,9 @@ export default forwardRef<
           decimals: a.decimals,
           extensions: {},
           logoURI: a.uri,
-          name: a.asset.name,
+          name: a.name,
           programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-          symbol: a.asset.symbol,
+          symbol: a.symbol,
           tags: ["mixin"],
           priority: 90,
         }

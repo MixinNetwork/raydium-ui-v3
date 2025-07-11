@@ -26,9 +26,13 @@ export interface ComputerUserResponse {
 
 export interface ComputerAssetResponse {
   asset_id: string;
+  chain_id: string;
+  name: string;
+  symbol: string;
   address: string;
-  uri: string;
   decimals: number;
+  uri: string;
+  price_usd: string;
 }
 
 export interface ComputerAsset extends ComputerAssetResponse {

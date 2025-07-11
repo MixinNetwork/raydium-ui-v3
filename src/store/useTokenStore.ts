@@ -1,7 +1,7 @@
 import { PublicKey } from '@solana/web3.js'
 import { MintLayout, RawMint } from '@solana/spl-token'
 import { TokenInfo, JupTokenType, ApiV3Token } from '@raydium-io/raydium-sdk-v2'
-import { ComputerAsset } from '@/types/computer'
+import { ComputerAsset, ComputerAssetResponse } from '@/types/computer'
 import createStore from './createStore'
 import { useAppStore } from './useAppStore'
 import { getStorageItem, setStorageItem } from '@/utils/localStorage'
@@ -29,9 +29,9 @@ export interface TokenStore {
   extraLoadedTokenList: TokenInfo[]
   whiteListMap: Set<string>
 
-  computerAssets: ComputerAsset[];
-  computerAssetIdMap: Record<string, ComputerAsset>;
-  computerAssetAddressMap: Record<string, ComputerAsset>;
+  computerAssets: ComputerAssetResponse[];
+  computerAssetIdMap: Record<string, ComputerAssetResponse>;
+  computerAssetAddressMap: Record<string, ComputerAssetResponse>;
   getComputerAssets: () => Promise<void>;
   getToken: (address: string) => TokenInfo | undefined;
 
@@ -107,38 +107,19 @@ export const useTokenStore = createStore<TokenStore>(
   (set, get) => ({
     ...initTokenSate,
     getComputerAssets: async () => {
-      const { getMixinClient, user } = useAppStore.getState()
-      if (!user) return;
       const assets = await client.fetchAssets();
       const { computerAssets: current } = get();
       if (assets.length > current.length) {
-        const ids = assets.map(a => a.asset_id);
-        const mp = assets.reduce((prev, cur, index) => {
-          prev[cur.asset_id]= index
-          return prev;
-        }, {} as Record<string, number>)
-
-        const client = getMixinClient();
-        const mas = await client.safe.fetchAssets(ids);
-        const fas = mas.map((a, i) => ({
-          ...assets[mp[a.asset_id]],
-          asset: {
-            ...a,
-            name: a.display_name,
-            symbol: a.display_symbol
-          }
-        }));
-
-        const addressMap = fas.reduce((prev, cur) => {
+        const addressMap = assets.reduce((prev, cur) => {
           prev[cur.address] = cur;
           return prev;
-        }, {} as Record<string, ComputerAsset>);
-        const idMap = fas.reduce((prev, cur) => {
+        }, {} as Record<string, ComputerAssetResponse>);
+        const idMap = assets.reduce((prev, cur) => {
           prev[cur.asset_id] = cur;
           return prev;
-        }, {} as Record<string, ComputerAsset>);
+        }, {} as Record<string, ComputerAssetResponse>);
         set({ 
-          computerAssets: fas, 
+          computerAssets: assets, 
           computerAssetAddressMap: addressMap,
           computerAssetIdMap: idMap
         });
@@ -156,9 +137,9 @@ export const useTokenStore = createStore<TokenStore>(
           decimals: ca.decimals,
           extensions: {},
           logoURI: ca.uri,
-          name: ca.asset.name,
+          name: ca.name,
           programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-          symbol: ca.asset.symbol,
+          symbol: ca.symbol,
           tags: [],
           priority: 90,
         } as TokenInfo
