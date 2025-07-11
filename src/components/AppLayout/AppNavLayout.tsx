@@ -1,7 +1,6 @@
 import { useDisclosure } from '@/hooks/useDelayDisclosure'
 import RaydiumLogo from '@/icons/RaydiumLogo'
 import RaydiumLogoOutline from '@/icons/RaydiumLogoOutline'
-import ChevronDownIcon from '@/icons/misc/ChevronDownIcon'
 import Gear from '@/icons/misc/Gear'
 import { useAppStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
@@ -10,8 +9,6 @@ import {
   Box,
   Flex,
   HStack,
-  Menu,
-  MenuButton,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -22,14 +19,13 @@ import {
 } from '@chakra-ui/react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import React, { ReactNode, useCallback, useEffect, useRef } from 'react'
+import React, { ReactNode, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Desktop, Mobile } from '../MobileDesktop'
 import { MobileBottomNavbar } from './MobileBottomNavbar'
 import { ColorThemeSettingField } from './components/ColorThemeSettingField'
 import { DefaultExplorerSettingField } from './components/DefaultExplorerSettingField'
 import { LanguageSettingField } from './components/LanguageSettingField'
-import { NavMoreButtonMenuPanel } from './components/NavMoreButtonMenuPanel'
 import { RPCConnectionSettingField } from './components/RPCConnectionSettingField'
 import { Divider } from './components/SettingFieldDivider'
 import { SlippageToleranceSettingField } from './components/SlippageToleranceSettingField'

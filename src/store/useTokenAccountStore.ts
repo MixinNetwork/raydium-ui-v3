@@ -2,7 +2,6 @@ import {
   parseTokenAccountResp,
   TokenAccount,
   TokenAccountRaw,
-  WSOLMint,
   splAccountLayout,
   getATAAddress,
   TxBuilder
@@ -274,7 +273,7 @@ export const useTokenAccountStore = createStore<TokenAccountStore>(
         })
       }
     },
-    getTokenBalanceUiAmount: ({ mint: mintKey, decimals, isNative = true }) => {
+    getTokenBalanceUiAmount: ({ mint: mintKey }) => {
       const mint = mintKey?.toString()
       const defaultVal = {
         rawAmount: new Decimal(0),
@@ -291,7 +290,7 @@ export const useTokenAccountStore = createStore<TokenAccountStore>(
       if (!tokenInfo || tokenInfo.hide) return defaultVal
 
       const decimalAmount = new Decimal(tokenInfo.total_amount)
-      let amount = decimalAmount.mul(10 ** tokenDecimal)
+      const amount = decimalAmount.mul(10 ** tokenDecimal)
 
       return {
         rawAmount: amount,

@@ -20,7 +20,6 @@ export default function useTokenInfo({
   asset?: Asset
 }) {
   const tokenMap = useTokenStore((s) => s.tokenMap)
-  const computerAssetMap= useTokenStore((s) => s.computerAssetAddressMap)
   const connection = useAppStore((s) => s.connection)
   const [loading, setLoading] = useState<boolean>(true)
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | undefined>(undefined)

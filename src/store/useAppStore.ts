@@ -15,7 +15,7 @@ import {
 } from '@raydium-io/raydium-sdk-v2'
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base'
 import { Wallet } from '@solana/wallet-adapter-react'
-import { buildMixAddress, MixinApi, SafeAsset, SafeOutputsRequest, SafeUtxoOutput, UserResponse, type Keystore } from '@mixin.dev/mixin-node-sdk';
+import { buildMixAddress, MixinApi, SafeUtxoOutput, UserResponse, type Keystore } from '@mixin.dev/mixin-node-sdk';
 import createStore from './createStore'
 import { blackJupMintSet, useTokenStore } from './useTokenStore'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
@@ -487,7 +487,7 @@ export const useAppStore = createStore<AppState>(
         let i = 0
         const checkAndSetRpcNode = async () => {
           const readyRpcs = [...rpcs]
-          if (localRpcNode?.rpcNode) readyRpcs.sort((a, b) => (a.name === localRpcNode.rpcNode!.name ? -1 : 1))
+          if (localRpcNode?.rpcNode) readyRpcs.sort((a) => (a.name === localRpcNode.rpcNode!.name ? -1 : 1))
           const success = await setRpcUrlAct(readyRpcs[i].url, true, i !== readyRpcs.length - 1)
           if (!success) {
             i++

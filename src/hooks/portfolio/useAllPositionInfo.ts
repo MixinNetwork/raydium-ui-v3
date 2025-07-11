@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { AccountInfo, PublicKey } from '@solana/web3.js'
-import { FormatFarmInfoOutV6, ApiV3PoolInfoConcentratedItem, ApiV3Token, getATAAddress } from '@raydium-io/raydium-sdk-v2'
+import { FormatFarmInfoOutV6, ApiV3PoolInfoConcentratedItem, ApiV3Token } from '@raydium-io/raydium-sdk-v2'
 
 import useFetchPoolById from '../pool/useFetchPoolById'
 

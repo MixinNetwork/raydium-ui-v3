@@ -308,7 +308,6 @@ export const useClmmStore = createStore<ClmmState>(
       baseAmount,
       otherAmountMax,
       createPoolBuildData,
-      onCloseToast,
       ...txProps
     }) => {
       const { raydium, publicKey, wallet, txVersion, info, keystore, user, account, balanceAddressMap, getComputerRecipient, getUserMix } = useAppStore.getState()
@@ -484,7 +483,7 @@ export const useClmmStore = createStore<ClmmState>(
         
         // create pool and open position
         if (createPoolBuildData) {
-          let total1 = CREATE_POOL_RENT_SIZES.reduce((prev, cur) => {
+          const total1 = CREATE_POOL_RENT_SIZES.reduce((prev, cur) => {
             const total = prev + rentMap[cur]
             return total
           }, 0)
@@ -520,7 +519,7 @@ export const useClmmStore = createStore<ClmmState>(
         txs[0].sign(insInfo.signers);
         const tx2 = Buffer.from(txs[0].serialize());
 
-        let total2 = OPEN_POSITION_RENT_SIZES.reduce((prev, cur) => {
+        const total2 = OPEN_POSITION_RENT_SIZES.reduce((prev, cur) => {
           const total = prev + rentMap[cur]
           return total
         }, 0)
@@ -586,13 +585,10 @@ export const useClmmStore = createStore<ClmmState>(
       liquidity,
       amountMinA,
       amountMinB,
-      needRefresh,
       closePosition,
       harvest,
-      onSent,
       onError,
       onFinally,
-      onConfirmed
     }) => {
       const { raydium, txVersion, getEpochInfo } = useAppStore.getState()      
       const { publicKey, connection, account, info, getUserMix, getComputerRecipient } = useAppStore.getState()
@@ -627,7 +623,6 @@ export const useClmmStore = createStore<ClmmState>(
           buildComputerExtra(info.members.app_id, OperationTypeUserDeposit, userIdToBytes(account.id))
         );
 
-        const close = !position.liquidity.eq(new BN(liquidity)) ? false : closePosition ?? position.liquidity.eq(new BN(liquidity))
         const rent =  await raydium.connection.getMinimumBalanceForRentExemption(165)
         const rentAmount = Math.floor(rent * 2 * 1.1);
         const cc = initComputerClient();
@@ -1166,7 +1161,7 @@ export const useClmmStore = createStore<ClmmState>(
     },
 
     createClmmPool: async ({ token1, token2, config, price, execute, forerunCreate, getObserveState, nonce }) => {
-      const { raydium, publicKey, txVersion, programIdConfig, info, getUserMix } = useAppStore.getState()
+      const { raydium, publicKey, txVersion, programIdConfig, info } = useAppStore.getState()
       if (!raydium || !publicKey || !info) {
         toastSubject.next({ noRpc: true })
         return { txId: '' }

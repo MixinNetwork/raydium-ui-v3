@@ -16,7 +16,7 @@ import {
 import { PublicKey } from '@solana/web3.js'
 import BN from 'bn.js'
 import { getMintSymbol } from '@/utils/token'
-import { FarmType, ConditionalFarmType, ConditionalFormattedRewardType } from './type'
+import { FarmType, ConditionalFarmType } from './type'
 import Decimal from 'decimal.js'
 import dayjs from 'dayjs'
 import { useAppStore } from '@/store/useAppStore'
