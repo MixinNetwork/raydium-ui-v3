@@ -96,3 +96,83 @@ export default function useFetchPoolByMint<T extends PoolFetchType>(
     ...swrProps
   }
 }
+
+export function useFetchPoolsByMint<T extends PoolFetchType>(
+  props: {
+    addresses: string[]
+    shouldFetch?: boolean
+    showFarms?: boolean
+    poolId?: string
+    refreshInterval?: number
+    type?: T
+  } & Omit<FetchPoolParams, 'type'>
+): {
+  formattedData: ReturnFormattedPoolType<T>[]
+  isLoadEnded: boolean
+  isLoading: boolean
+} {
+  const {
+    addresses,
+    shouldFetch,
+    showFarms,
+    type = PoolFetchType.All,
+    sort = 'default',
+    order = 'desc',
+    pageSize = 100,
+    refreshInterval = MINUTE_MILLISECONDS,
+    poolId
+  } = props || {}
+
+  const fetcher = useCallback(
+    (url: string) =>
+      axios.get<PoolsApiReturn>(url, {
+        skipError: true
+      }),
+    []
+  )
+
+  const [host, mintUrl] = useAppStore((s) => [s.urlConfigs.BASE_HOST, s.urlConfigs.POOL_SEARCH_MINT], shallow)
+  
+  const pm: Record<string, ReturnFormattedPoolType<T>> = {}
+  let isLoadEnded = false;
+  let isLoading = false;
+  addresses.forEach(address => {
+    const mint1 = address;
+    const mint2: string = '';
+    const [baseMint, quoteMint] = mint2 && mint1 > mint2 ? [mint2, mint1] : [mint1, mint2]
+    const url = shouldFetch ? host + mintUrl : null;
+    const { data, setSize, error, ...swrProps } = useSWRInfinite(
+      (index) =>
+        url
+          ? url +
+            `?mint1=${baseMint}&mint2=${quoteMint}&poolType=${
+              showFarms ? `${type}Farm` : type
+            }&poolSortField=${sort}&sortType=${order}&pageSize=${pageSize}&page=${index + 1}`
+          : url,
+      fetcher,
+      {
+        dedupingInterval: refreshInterval,
+        focusThrottleInterval: refreshInterval,
+        refreshInterval
+      }
+    )
+    const resData = useMemo(
+      () =>
+        (data || []).reduce((acc, cur) => acc.concat(cur?.data?.data || []).filter(Boolean), [] as ApiV3PoolInfoItem[]).map(formatAprData),
+      [data]
+    ) as ReturnPoolType<T>[]
+    const formattedData = useMemo(() => resData.map((i) => formatPoolData(i)), [resData]) as ReturnFormattedPoolType<T>[]
+    const loadEnded = !swrProps.isLoading && (!resData.length || !!error);
+    isLoading = isLoading || swrProps.isLoading
+    isLoadEnded = isLoadEnded && loadEnded;
+    formattedData.forEach(p => {
+      if (pm[p.id]) return;
+      pm[p.id] = p;
+    })
+  })
+  return {
+    formattedData: Object.values(pm),
+    isLoadEnded,
+    isLoading
+  }
+}

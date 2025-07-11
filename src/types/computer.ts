@@ -35,10 +35,6 @@ export interface ComputerAssetResponse {
   price_usd: string;
 }
 
-export interface ComputerAsset extends ComputerAssetResponse {
-  asset: Asset;
-}
-
 export interface ComputerNonceResponse {
   nonce_address: string;
   nonce_hash: string;

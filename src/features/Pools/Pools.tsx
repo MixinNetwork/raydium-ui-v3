@@ -31,8 +31,7 @@ import TokenSearchInput from '@/components/TokenSearchInput'
 import useFetchMainInfo from '@/hooks/info/useFetchMainInfo'
 import { AprKey, FormattedPoolInfoItem } from '@/hooks/pool/type'
 import useFetchPoolById from '@/hooks/pool/useFetchPoolById'
-import useFetchPoolByMint from '@/hooks/pool/useFetchPoolByMint'
-import useFetchPoolList from '@/hooks/pool/useFetchPoolList'
+import useFetchPoolByMint, { useFetchPoolsByMint } from '@/hooks/pool/useFetchPoolByMint'
 import { useEvent } from '@/hooks/useEvent'
 import usePrevious from '@/hooks/usePrevious'
 import useSort from '@/hooks/useSort'
@@ -127,6 +126,7 @@ export default function Pools() {
   currentQuery.current = query || {}
   const isEN = i18n.language === 'en'
   const isMobile = useAppStore((s) => s.isMobile)
+  const computerAssets = useTokenStore((s) => s.computerAssets)
 
   const tabItems: PoolTabItem[] = [
     {
@@ -243,17 +243,32 @@ export default function Pools() {
 
   const search = searchTokens.reduce((acc, cur) => acc + ',' + cur.address, '')
   const hasSearch = searchTokens.length > 0
+  // const {
+  //   formattedData: orgData,
+  //   loadMore: orgLoadMore,
+  //   isLoadEnded: isOrgLoadedEnd,
+  //   isLoading: isOrgLoading
+  // } = useFetchPoolList({
+  //   showFarms,
+  //   shouldFetch: !hasSearch,
+  //   type: activeTabItem.value,
+  //   order: order ? 'desc' : 'asc',
+  //   sort: sortKey !== 'liquidity' && sortKey !== 'default' ? `${sortKey}${timeBase}` : sortKey
+  // })
+
+  const addresses = useMemo(() => {
+    return computerAssets.map(d => d.address)
+  }, [computerAssets]);
   const {
     formattedData: orgData,
-    loadMore: orgLoadMore,
     isLoadEnded: isOrgLoadedEnd,
     isLoading: isOrgLoading
-  } = useFetchPoolList({
+  } = useFetchPoolsByMint({
+    addresses,
     showFarms,
     shouldFetch: !hasSearch,
     type: activeTabItem.value,
-    order: order ? 'desc' : 'asc',
-    sort: sortKey !== 'liquidity' && sortKey !== 'default' ? `${sortKey}${timeBase}` : sortKey
+    order: 'desc',
   })
 
   const {
@@ -282,7 +297,7 @@ export default function Pools() {
   const data = hasSearch || searchIdData?.length ? searchData : orgData
   const isLoading = hasSearch ? isSearchLoading : isOrgLoading
   const isLoadEnded = hasSearch ? isSearchLoadEnded : isOrgLoadedEnd
-  const loadMore = hasSearch ? () => {} : orgLoadMore
+  const loadMore = () => {}
   const sortedData = useMemo(() => {
     // if (!favoritePools.size) return data
     const favorite: FormattedPoolInfoItem[] = []

@@ -1,7 +1,7 @@
 import { PublicKey } from '@solana/web3.js'
 import { MintLayout, RawMint } from '@solana/spl-token'
 import { TokenInfo, JupTokenType, ApiV3Token } from '@raydium-io/raydium-sdk-v2'
-import { ComputerAsset, ComputerAssetResponse } from '@/types/computer'
+import { ComputerAssetResponse } from '@/types/computer'
 import createStore from './createStore'
 import { useAppStore } from './useAppStore'
 import { getStorageItem, setStorageItem } from '@/utils/localStorage'
