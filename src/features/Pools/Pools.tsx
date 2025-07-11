@@ -268,7 +268,7 @@ export default function Pools() {
     showFarms,
     shouldFetch: !hasSearch,
     type: activeTabItem.value,
-    order: 'desc',
+    order: order ? 'desc' : 'asc',
   })
 
   const {

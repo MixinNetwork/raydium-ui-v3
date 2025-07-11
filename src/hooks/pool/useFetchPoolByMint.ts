@@ -124,55 +124,57 @@ export function useFetchPoolsByMint<T extends PoolFetchType>(
   } = props || {}
 
   const fetcher = useCallback(
-    (url: string) =>
-      axios.get<PoolsApiReturn>(url, {
+    async (urls: string[]) => {
+      const responses = await Promise.all(urls.map(url => axios.get<PoolsApiReturn>(url, {
         skipError: true
-      }),
+      })));
+      return responses;
+    },
     []
   )
 
   const [host, mintUrl] = useAppStore((s) => [s.urlConfigs.BASE_HOST, s.urlConfigs.POOL_SEARCH_MINT], shallow)
   
   const pm: Record<string, ReturnFormattedPoolType<T>> = {}
-  let isLoadEnded = false;
-  let isLoading = false;
-  addresses.forEach(address => {
-    const mint1 = address;
-    const mint2: string = '';
-    const [baseMint, quoteMint] = mint2 && mint1 > mint2 ? [mint2, mint1] : [mint1, mint2]
-    const url = shouldFetch ? host + mintUrl : null;
-    const { data, setSize, error, ...swrProps } = useSWRInfinite(
-      (index) =>
-        url
-          ? url +
-            `?mint1=${baseMint}&mint2=${quoteMint}&poolType=${
-              showFarms ? `${type}Farm` : type
-            }&poolSortField=${sort}&sortType=${order}&pageSize=${pageSize}&page=${index + 1}`
-          : url,
+  const urls = shouldFetch ? addresses.map(address => {
+    const [baseMint, quoteMint] = [address, '']
+    let url =  host + mintUrl;
+    return url +
+        `?mint1=${baseMint}&mint2=${quoteMint}&poolType=${
+          showFarms ? `${type}Farm` : type
+        }&poolSortField=${sort}&sortType=${order}&pageSize=${pageSize}&page=1`
+  }) : [];
+
+  const { data, error, ...swrProps } = useSWRInfinite(
+      () => urls,
       fetcher,
       {
         dedupingInterval: refreshInterval,
         focusThrottleInterval: refreshInterval,
         refreshInterval
       }
-    )
-    const resData = useMemo(
-      () =>
-        (data || []).reduce((acc, cur) => acc.concat(cur?.data?.data || []).filter(Boolean), [] as ApiV3PoolInfoItem[]).map(formatAprData),
-      [data]
-    ) as ReturnPoolType<T>[]
-    const formattedData = useMemo(() => resData.map((i) => formatPoolData(i)), [resData]) as ReturnFormattedPoolType<T>[]
-    const loadEnded = !swrProps.isLoading && (!resData.length || !!error);
-    isLoading = isLoading || swrProps.isLoading
-    isLoadEnded = isLoadEnded && loadEnded;
-    formattedData.forEach(p => {
-      if (pm[p.id]) return;
-      pm[p.id] = p;
-    })
+  )
+  const resData = useMemo(
+    () =>
+      (data || []).flat().reduce((acc, cur) => acc.concat(cur?.data?.data || []).filter(Boolean), [] as ApiV3PoolInfoItem[]).map(formatAprData),
+    [data]
+  ) as ReturnPoolType<T>[]
+  const isLoadEnded = !swrProps.isLoading && (!resData.length || !!error)
+  const formattedData = useMemo(() => resData.map((i) => formatPoolData(i)), [resData]) as ReturnFormattedPoolType<T>[]
+  formattedData.forEach(p => {
+    if (pm[p.id]) return;
+    pm[p.id] = p;
   })
+
+  console.log(order)
+  const res = Object.values(pm).sort((a, b) => {
+    if (order === 'desc') return a.tvl >= b.tvl ? -1 : 1;
+    return a.tvl >= b.tvl? 1 : -1;
+  })
+
   return {
-    formattedData: Object.values(pm),
+    formattedData: res,
     isLoadEnded,
-    isLoading
+    isLoading: swrProps.isLoading
   }
 }
