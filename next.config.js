@@ -2,7 +2,6 @@
 const path = require('path')
 
 module.exports = {
-  basePath: '/raydium',
   trailingSlash: true,
   webpack: (config, { buildId, dev, isServer, defaultLoaders, nextRuntime, webpack }) => {
     config.resolve.alias = {
