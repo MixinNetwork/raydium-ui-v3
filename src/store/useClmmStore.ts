@@ -52,7 +52,7 @@ import { buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema, b
 import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, OperationTypeUserDeposit, uniqueConversationID, userIdToBytes } from '@mixin.dev/mixin-node-sdk'
 import { CREATE_POOL_RENT_SIZES, OPEN_POSITION_RENT_SIZES, OperationTypeSystemCall, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { initComputerClient } from '@/api/computer'
-import { add } from '@/utils/number'
+import { add, eq } from '@/utils/number'
 import BigNumber from 'bignumber.js'
 import { TOKEN_2022_PROGRAM_ID } from '@solana/spl-token'
 
@@ -459,12 +459,6 @@ export const useClmmStore = createStore<ClmmState>(
             buildData: undefined
           };
         }
-        const amount1 = base === 'MintA' 
-          ? formatUnits(baseAmount, poolInfo.mintA.decimals).toString() 
-          : formatUnits(otherAmountMax, poolInfo.mintA.decimals).toString();
-        const amount2 = base === 'MintA' 
-          ? formatUnits(otherAmountMax, poolInfo.mintB.decimals).toString() 
-          : formatUnits(baseAmount, poolInfo.mintB.decimals).toString();
         
         const rentMap: Record<string, number> = {}  
         const sizes = Array.from(new Set([...CREATE_POOL_RENT_SIZES, ...OPEN_POSITION_RENT_SIZES]));
@@ -525,33 +519,44 @@ export const useClmmStore = createStore<ClmmState>(
         }, 0)
         const fee = await cc.getFeeOnXin(formatUnits(total2, SOL_DECIMAL).toString())
 
+        const refs = invoice.entries.length > 0 ? [invoice.entries.length - 1] : [];
         const trace2 = uniqueConversationID(tx2.toString('hex'), "system call");
         const extra2 = buildComputerExtra(
           info.members.app_id, 
           OperationTypeSystemCall, 
           buildSystemCallInvoiceExtra(account.id, trace2, false, fee.fee_id)
         )
-        const preLen = invoice.entries.length
+        refs.push(invoice.entries.length)
         attachStorageEntry(invoice, uniqueConversationID(trace2, "storage"), tx2)
-        attachInvoiceEntry(invoice, {
-          trace_id: uniqueConversationID(trace2, token1.asset_id),
-          asset_id: token1.asset_id,
-          amount: amount1,
-          extra: referenceExtra,
-          index_references: [],
-          hash_references: []
-        })
-        attachInvoiceEntry(invoice, {
-          trace_id: uniqueConversationID(trace2, token2.asset_id),
-          asset_id: token2.asset_id,
-          amount: amount2,
-          extra: referenceExtra,
-          index_references: [],
-          hash_references: []
-        })
 
-        let refs = preLen > 0 ? [preLen - 1] : [];
-        refs = [...refs, ...new Array(3).fill(0).map((_, i) => i + preLen)]
+        const amount1 = base === 'MintA' 
+          ? formatUnits(baseAmount, poolInfo.mintA.decimals).toString() 
+          : formatUnits(otherAmountMax, poolInfo.mintA.decimals).toString();
+        const amount2 = base === 'MintA' 
+          ? formatUnits(otherAmountMax, poolInfo.mintB.decimals).toString() 
+          : formatUnits(baseAmount, poolInfo.mintB.decimals).toString();
+        if (!eq(amount1, 0)) {
+          refs.push(invoice.entries.length)
+          attachInvoiceEntry(invoice, {
+            trace_id: uniqueConversationID(trace2, token1.asset_id),
+            asset_id: token1.asset_id,
+            amount: amount1,
+            extra: referenceExtra,
+            index_references: [],
+            hash_references: []
+          })
+        }
+        if (!eq(amount2, 0)) {
+          refs.push(invoice.entries.length)
+          attachInvoiceEntry(invoice, {
+            trace_id: uniqueConversationID(trace2, token2.asset_id),
+            asset_id: token2.asset_id,
+            amount: amount2,
+            extra: referenceExtra,
+            index_references: [],
+            hash_references: []
+          })
+        }
         attachInvoiceEntry(invoice, {
             trace_id: trace2,
             asset_id: XIN_ASSET_ID,
