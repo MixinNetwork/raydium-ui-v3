@@ -59,6 +59,7 @@ import { getFavoritePoolCache, POOL_SORT_KEY } from './util'
 import i18n from '@/i18n'
 import { setUrlQuery, useRouteQuery } from '@/utils/routeTools'
 import { urlToMint, mintToUrl } from '@/utils/token'
+import BigNumber from 'bignumber.js';
 
 export type PoolPageQuery = {
   token?: string
@@ -269,7 +270,15 @@ export default function Pools() {
     shouldFetch: !hasSearch,
     type: activeTabItem.value,
     order: order ? 'desc' : 'asc',
-  })
+  });
+  const info = orgData.reduce((prev, cur) => {
+    prev.tvl = prev.tvl.plus(cur.tvl)
+    prev.volume = prev.volume.plus(cur.day.volume)
+    return prev
+  }, {
+    tvl: BigNumber(0),
+    volume: BigNumber(0),
+  });
 
   const {
     formattedData: searchMintData,
@@ -346,7 +355,6 @@ export default function Pools() {
   const { containerProps, titleContainerProps, scrollBodyProps } = useScrollTitleCollapse()
   const { isOpen: isCollapseOpen, onToggle: toggleSubcontrollers } = useDisclosure()
 
-  const [tvl, volume] = infoData ? [infoData.tvl, infoData.volume24] : ['0', '0']
 
   const renderPoolListItem = useCallback(
     (info: FormattedPoolInfoItem, idx: number) => (
@@ -381,14 +389,14 @@ export default function Pools() {
           <Desktop>
             <HStack justify="space-between" w="full" pb={4}>
               <PageHeroTitle title={t('liquidity.pools')} description={t('liquidity.pools_desc') || ''} />
-              <TVLInfoPanel tvl={tvl} volume={volume} />
+              <TVLInfoPanel tvl={info.tvl.toString()} volume={info.volume.toString()} />
             </HStack>
           </Desktop>
         </Box>
 
         <Mobile>
           <Box {...titleContainerProps} mb={0.5} flexShrink={0} marginX={revertAppLayoutPaddingX}>
-            <TVLInfoPanelMobile tvl={tvl} volume={volume} />
+            <TVLInfoPanelMobile tvl={info.tvl.toString()} volume={info.volume.toString()} />
           </Box>
         </Mobile>
 
@@ -417,36 +425,6 @@ export default function Pools() {
             paddingX={appLayoutPaddingX}
             backgroundColor={['transparent', colors.backgroundLight30]}
           >
-            <GridItem area={'tabs'}>
-              <Desktop>
-                <Tabs
-                  items={tabItems}
-                  size={['sm', 'xl']}
-                  tabItemSX={{ px: '4px !important' }}
-                  value={activeTabItem.value}
-                  onChange={onPoolValueChange}
-                  variant="line"
-                />
-              </Desktop>
-              <Mobile>
-                <Select
-                  sx={({ isPanelOpen }) => ({
-                    borderRadius: 'full',
-                    height: '34px',
-                    minWidth: '102px',
-                    border: '1px solid transparent',
-                    borderColor: isPanelOpen ? 'currentcolor' : 'transparent'
-                  })}
-                  popoverContentSx={{
-                    bg: colors.tooltipBg
-                  }}
-                  value={activeTabItem.value}
-                  items={tabItems}
-                  onChange={(value) => onPoolValueChange(value)}
-                />
-              </Mobile>
-            </GridItem>
-
             <GridItem area={'search'}>
               {(!isMobile || isMobileSearchOpen) && (
                 <TokenSearchInput
