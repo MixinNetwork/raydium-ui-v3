@@ -42,7 +42,7 @@ import { ComputerSystemCallRequest } from '@/types/computer'
 import { initComputerClient } from '@/api/computer'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
 import { MixinMultipleTracesModal } from '@/components/Mixin/MixinMultipleTracesModal'
-import { useCheckMessenger } from '@/utils/mixin'
+import { checkMessenger } from '@/utils/mixin'
 
 export default function RemoveLiquidityModal({
   isOpen,
@@ -172,7 +172,7 @@ export default function RemoveLiquidityModal({
   })
   
   const openTraceModal = (req: ComputerSystemCallRequest) => {
-    if (useCheckMessenger()) {
+    if (checkMessenger()) {
       location.href = req.value;
       return;
     }

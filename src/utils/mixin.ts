@@ -94,7 +94,7 @@ export const buildInvoiceWithEntries = (recipient: string, storageEntry: Invoice
   return invoice
 }
 
-export const useCheckMessenger = () => {
+export const checkMessenger = () => {
   const client = WebViewApi();
   const platform = client.getMixinContext().platform;
   switch (platform) {

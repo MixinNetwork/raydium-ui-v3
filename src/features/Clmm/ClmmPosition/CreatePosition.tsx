@@ -49,7 +49,7 @@ import { ComputerSystemCallRequest, UserAssetBalance } from '@/types/computer'
 import { MixinMultipleTracesModal } from '@/components/Mixin/MixinMultipleTracesModal'
 import { initComputerClient } from '@/api/computer'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
-import { useCheckMessenger } from '@/utils/mixin'
+import { checkMessenger } from '@/utils/mixin'
 
 type FormatParams = Parameters<typeof formatToMaxDigit>[0]
 
@@ -392,7 +392,7 @@ export default function CreatePosition() {
   })
 
   const openTraceModal = (req: ComputerSystemCallRequest) => {
-    if (useCheckMessenger()) {
+    if (checkMessenger()) {
       location.href = req.value;
       return;
     }
