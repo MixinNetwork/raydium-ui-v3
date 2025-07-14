@@ -2,12 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Flex, Grid, GridItem, Heading, SimpleGrid, Text } from '@chakra-ui/react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/router'
-import Tabs from '@/components/Tabs'
 import { colors } from '@/theme/cssVariables'
 import { useAppStore } from '@/store/useAppStore'
 import { ClmmMyPositionTabContent } from './TabClmm'
-import { Desktop, Mobile } from '@/components/MobileDesktop'
-import { Select } from '@/components/Select'
 import { useStateWithUrl } from '@/hooks/useStateWithUrl'
 import IntervalCircle, { IntervalCircleHandler } from '@/components/IntervalCircle'
 import useAllPositionInfo, { PositionTabValues } from '@/hooks/portfolio/useAllPositionInfo'
@@ -30,7 +27,6 @@ export default function SectionMyPositions() {
   ]
   const connected = useAppStore((s) => s.connected)
   const owner = useAppStore((s) => s.publicKey)
-  const isMobile = useAppStore((s) => s.isMobile)
 
   const defaultTab = (query.tab as string) || tabs[0].value
 
@@ -38,12 +34,6 @@ export default function SectionMyPositions() {
     fromUrl: (v) => v,
     toUrl: (v) => v
   })
-
-  const onTabChange = (tab: any) => {
-    setCurrentTab(tab)
-  }
-
-  const isFocusClmmTab = currentTab === tabs[0].value
 
   const noRewardClmmPos = useRef<Set<string>>(new Set())
   const setNoRewardClmmPos = useEvent((poolId: string, isDelete?: boolean) => {
@@ -62,17 +52,11 @@ export default function SectionMyPositions() {
   )
 
   const {
-    handleHarvest,
     handleRefresh,
-    farmLpBasedData,
-    stakedFarmMap,
-    allFarmBalances,
     clmmBalanceInfo,
     clmmLockInfo,
     isClmmLoading,
-    isFarmLoading,
     rewardState,
-    isSending
   } = useAllPositionInfo({})
 
   const currentRewardState = rewardState[currentTab as PositionTabValues]
@@ -128,87 +112,6 @@ export default function SectionMyPositions() {
             />
           </Flex>
         </GridItem>
-        <GridItem area="tabs" justifySelf={['right', 'left']}>
-          <Desktop>
-            <Tabs size="md" variant="rounded" items={tabs} onChange={onTabChange} value={currentTab} />
-          </Desktop>
-          <Mobile>
-            <Select variant="roundedFilledFlowDark" items={tabs} onChange={onTabChange} value={currentTab} />
-          </Mobile>
-        </GridItem>
-        {/* <GridItem area={'action'} justifySelf={['stretch', 'stretch', 'right']}>
-          {connected ? (
-            <Box py="6px" px={4} bg={colors.transparentContainerBg} borderRadius="12px">
-              <HStack justify={'space-between'} gap={8}>
-                <Flex gap={[0, 2]} direction={['column', 'row']} fontSize={['xs', 'sm']} align={['start', 'center']}>
-                  <HStack gap={1}>
-                    <Text whiteSpace={'nowrap'} color={colors.textSecondary}>
-                      {t('portfolio.harvest_all_label')}
-                    </Text>
-                    {isMobile && currentRewardState.rewardInfo.length > 0 && (
-                      <QuestionToolTip
-                        label={
-                          <>
-                            {currentRewardState.rewardInfo.map((r) => (
-                              <Flex key={r.mint.address} alignItems="center" gap="1" my="2">
-                                <TokenAvatar key={`pool-reward-${r.mint.address}`} size={'sm'} token={r.mint} />
-                                <Text color={colors.textPrimary}>
-                                  {formatCurrency(r.amount, {
-                                    maximumDecimalTrailingZeroes: 5
-                                  })}
-                                </Text>
-                                <Text>{getMintSymbol({ mint: r.mint, transformSol: true })}</Text>
-                                <Text color={colors.textPrimary}>({formatCurrency(r.amountUSD, { symbol: '$', decimalPlaces: 4 })})</Text>
-                              </Flex>
-                            ))}
-                          </>
-                        }
-                        iconType="info"
-                        iconProps={{ width: 10, height: 10, fill: colors.textSecondary }}
-                      />
-                    )}
-                  </HStack>
-                  <HStack>
-                    <Flex gap="2" alignItems="center" whiteSpace={'nowrap'} color={colors.textPrimary} fontWeight={500}>
-                      {formatCurrency(currentRewardState.pendingReward, { symbol: '$', maximumDecimalTrailingZeroes: 4 })}
-                      {!isMobile && currentRewardState.rewardInfo.length > 0 ? (
-                        <QuestionToolTip
-                          label={
-                            <>
-                              {currentRewardState.rewardInfo.map((r) => (
-                                <Flex key={r.mint.address} alignItems="center" gap="1" my="2">
-                                  <TokenAvatar key={`pool-reward-${r.mint.address}`} size={'sm'} token={r.mint} />
-                                  <Text color={colors.textPrimary}>
-                                    {formatCurrency(r.amount, {
-                                      maximumDecimalTrailingZeroes: 5
-                                    })}
-                                  </Text>
-                                  <Text>{getMintSymbol({ mint: r.mint, transformSol: true })}</Text>
-                                  <Text color={colors.textPrimary}>({formatCurrency(r.amountUSD, { symbol: '$', decimalPlaces: 4 })})</Text>
-                                </Flex>
-                              ))}
-                            </>
-                          }
-                          iconType="info"
-                          iconProps={{ width: 18, height: 18, fill: colors.textSecondary }}
-                        />
-                      ) : null}
-                    </Flex>
-                  </HStack>
-                </Flex>
-                <Button
-                  size={['xs', 'md']}
-                  minHeight={[7, 10]}
-                  isLoading={isSending}
-                  isDisabled={!currentRewardState.isReady}
-                  onClick={() => handleHarvest({ tab: currentTab as PositionTabValues, zeroClmmPos: noRewardClmmPos.current })}
-                >
-                  {t('portfolio.harvest_all_button')}
-                </Button>
-              </HStack>
-            </Box>
-          ) : null}
-        </GridItem> */}
       </Grid>
       {connected ? (
         <ClmmMyPositionTabContent

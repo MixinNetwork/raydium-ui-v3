@@ -1,13 +1,17 @@
 import { useMemo } from 'react'
-import { useTokenAccountStore, useTokenStore } from '@/store'
+import { useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
 import useTokenPrice from '@/hooks/token/useTokenPrice'
 import Decimal from 'decimal.js'
 import { IdleType } from '@/features/Portfolio/components/SectionOverview/components/PortfolioIdle'
+import { SOL_ASSET_ID } from '@/utils/constant'
+import { add, compare, mul } from '@/utils/number'
 
 const displayCount = 3
 
 export default function useTokenBalance() {
+  const balances = useAppStore((s) => s.balances)
   const tokenMap = useTokenStore((s) => s.tokenMap)
+  const computerAssetIdMap = useTokenStore((s) => s.computerAssetIdMap)
   const [getTokenBalanceUiAmount, tokenAccounts] = useTokenAccountStore((s) => [s.getTokenBalanceUiAmount, s.tokenAccounts])
   const { data: tokenPrices } = useTokenPrice({
     mintList: tokenAccounts
@@ -16,49 +20,49 @@ export default function useTokenBalance() {
   })
 
   const idleList: IdleType[] = useMemo(() => {
-    const allBalance =
-      tokenAccounts
-        .filter((tokenAccount) => tokenAccount.isNative || tokenAccount.isAssociated)
-        .map((tokenAccount) => {
-          const uiAmount = getTokenBalanceUiAmount({ mint: tokenAccount.mint })
-          const tokenMint = tokenAccount.mint.toString()
-          const token = tokenMap.get(tokenMint)
-          if (!token) {
-            return {
-              token: {
-                decimals: 0,
-                chainId: 101,
-                symbol: tokenMint.slice(0, 6),
-                address: tokenMint,
-                programId: '',
-                logoURI: '',
-                name: tokenMint.slice(0, 6),
-                tags: [],
-                extensions: {}
-              },
-              address: tokenAccount.mint.toString(),
-              isZero: true,
-              amount: uiAmount.text,
-              amountInUSD: '0'
-            }
-          }
-
-          return {
-            token,
-            address: tokenAccount.mint.toString(),
-            isZero: uiAmount.isZero,
-            amount: uiAmount.text,
-            amountInUSD: new Decimal(uiAmount.text).mul(tokenPrices[tokenMint]?.value || 0).toString()
-          } as IdleType & { isZero: boolean }
-        })
-        .filter((item) => !item.isZero)
-        .sort((a, b) => new Decimal(b.amountInUSD).sub(a.amountInUSD).toNumber()) ?? []
-    const top5 = allBalance.slice(0, displayCount)
-    const last5 = allBalance.slice(displayCount, allBalance.length).reduce(
-      (acc: any, cur: IdleType) =>
-        ({
-          ...acc,
-          token: {
+    const allBalance = Object.values(balances)
+    .filter(b => {
+      return b.asset.chain_id === SOL_ASSET_ID || !!computerAssetIdMap[b.asset_id]
+    })
+    .map(b => {
+      const decimals = b.asset.chain_id === SOL_ASSET_ID 
+        ? b.asset.precision
+        : 8;
+      const address = b.asset.chain_id === SOL_ASSET_ID 
+        ? b.asset.asset_key
+        : computerAssetIdMap[b.asset_id].address
+      const value = mul(b.total_amount, b.asset.price_usd).toString()
+      return {
+        token: {
+          decimals,
+          chainId: 101,
+          symbol: b.asset.symbol,
+          address,
+          programId: '',
+          logoURI: '',
+          name: b.asset.name,
+          tags: [],
+          extensions: {}
+        },
+        address: '',
+        isZero: true,
+        amount: b.total_amount,
+        amountInUSD: value
+      }
+    })
+    .sort((a, b) => {
+      return -compare(a.amountInUSD, b.amountInUSD)
+    })
+    const top = allBalance.slice(0, displayCount);
+    const other = allBalance.slice(displayCount, allBalance.length).reduce(
+      (acc: any, cur: IdleType) => {
+        const res = add(acc.amountInUSD, cur.amountInUSD)
+        if (acc.isZero && res.isPositive()) acc.isZero = false;
+        acc.amountInUSD = res.toString();
+        return acc
+      },
+      {
+        token: {
             decimals: 0,
             chainId: 101,
             symbol: 'Others',
@@ -70,14 +74,12 @@ export default function useTokenBalance() {
             extensions: {}
           },
           address: '',
-          isZero: !acc || new Decimal(acc.amountInUSD || 0).add(cur.amountInUSD).isZero(),
+          isZero: true,
           amount: '',
-          amountInUSD: new Decimal(acc?.amountInUSD || 0).add(cur.amountInUSD).toString()
-        } as IdleType),
-      {}
+          amountInUSD: '0'
+      } as IdleType
     )
-
-    return allBalance.length > displayCount ? [...top5, last5] : top5
+    return [...top, other]
   }, [tokenAccounts, getTokenBalanceUiAmount, tokenMap, tokenPrices])
 
   const idleBalance = useMemo(() => idleList.reduce((acc, cur) => acc.add(cur.amountInUSD), new Decimal(0)), [idleList])
