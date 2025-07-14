@@ -19,23 +19,6 @@ export function NavMoreButtonMenuPanel() {
     <MenuList>
       <Box py={3}>
         <MenuItem>
-          <Link as={NextLink} _hover={{ textDecoration: 'none' }} w="full" href="/staking">
-            <HStack>
-              <StakingPageThumbnailIcon />
-              <Text>{t('staking.title')}</Text>
-            </HStack>
-          </Link>
-        </MenuItem>
-        <MenuItem>
-          <Link as={NextLink} _hover={{ textDecoration: 'none' }} w="full" href="/bridge">
-            <HStack>
-              <BridgePageThumbnailIcon />
-              <Text>{t('bridge.title')}</Text>
-            </HStack>
-          </Link>
-        </MenuItem>
-        <MenuDivider />
-        <MenuItem>
           <Link as={NextLink} href="/docs/disclaimer" _hover={{ textDecoration: 'none' }} w="full" isExternal>
             <HStack>
               <DisclaimerThumbnailIcon />

@@ -55,12 +55,6 @@ export function MobileBottomNavbar() {
         icon={(colorMode) => <PortfolioPageThumbnailIcon colorMode={colorMode} isActive={isPortfolioActive} />}
         isActive={isPortfolioActive}
       />
-      <BottomNavbarItem
-        href="https://perps.raydium.io"
-        text={t('perpetuals.title')}
-        icon={(colorMode) => <PerpetualsPageThumbnailIcon colorMode={colorMode} isActive={false} />}
-        isActive={false}
-      />
       <Menu size="lg" placement="top-end" offset={[0, 30]} /* make menu popup higher */>
         <MenuButton as="div">
           <BottomNavbarItem
