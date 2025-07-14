@@ -187,7 +187,7 @@ function TokenInput(props: TokenInputProps) {
     ? new Decimal(balanceAddressMap[token.address].total_amount) 
     : new Decimal(0)
   const totalPrice = value && token 
-    ? new Decimal(value).mul(balanceAddressMap[token.address].asset.price_usd)
+    ? new Decimal(value).mul(balanceAddressMap[token.address]?.asset.price_usd || 0)
     : new Decimal(0)
   const balanceMaxString = hideBalance
     ? null
