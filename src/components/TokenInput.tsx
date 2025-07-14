@@ -181,7 +181,6 @@ function TokenInput(props: TokenInputProps) {
     mintList: [token?.address]
   })
   const value = shakeValueDecimal(inputValue, token?.decimals)
-  const price = tokenPrice[token?.address || '']?.value
 
   // balance
   const balanceAmount = token && balanceAddressMap[token.address] 
