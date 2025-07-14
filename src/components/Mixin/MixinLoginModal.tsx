@@ -7,6 +7,7 @@ import { v4 } from 'uuid';
 import { useAppStore } from '@/store/useAppStore'
 import { compare } from '@/utils/date';
 import { MixinModal } from './MixinModal';
+import { checkMessenger } from '@/utils/mixin';
 
 export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }) {
   const { t } = useTranslation()
@@ -16,6 +17,8 @@ export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }
     setKeystore: s.setKeystore,
     getMe: s.getMe,
   }));
+
+  const inClient = checkMessenger();
 
   const clientId = process.env.NEXT_PUBLIC_CLIENT_ID as string;
   const scope = 'PROFILE:READ ASSETS:READ SNAPSHOTS:READ';
@@ -75,6 +78,7 @@ export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }
     const handleAuthorization = (a: AuthorizationResponse) => {
       if (!prev.current || compare(prev.current.created_at, a.created_at) < 0) {
         setAuthorization(a)
+        if (inClient) window.location.href = `mixin://codes/${a.code_id}`;
         return false;
       }
       if (a.authorization_code.length > 16) {
@@ -148,6 +152,6 @@ export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }
   };
 
   return (
-    <MixinModal title={t("computer.login")} isOpen={props.isOpen} onClose={props.onClose} data={authorization ? `mixin://codes/${authorization.code_id}` : undefined}/>
+    <MixinModal title={t("computer.login")} isOpen={props.isOpen && !inClient} onClose={props.onClose} data={authorization ? `mixin://codes/${authorization.code_id}` : undefined}/>
   )
 }
