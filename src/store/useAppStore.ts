@@ -251,6 +251,8 @@ export const useAppStore = createStore<AppState>(
     updateBalances: async (as: ComputerAssetResponse[]) => {
       const { user, getMixinClient } = get();
       if (!user) return;
+      const deployedAddrs = as.map(a => a.address);
+
       const client = getMixinClient();
       const members = [user.user_id];
       let offset = 0
@@ -269,6 +271,7 @@ export const useAppStore = createStore<AppState>(
         }
         offset = outputs[outputs.length - 1].sequence + 1
       }
+
       const bm = total.reduce((prev, cur) => {
         const key = cur.asset_id;
         if (prev[key]) {
@@ -291,10 +294,7 @@ export const useAppStore = createStore<AppState>(
         outputs: [],
         address: "11111111111111111111111111111111"
       }
-
-      const cc = initComputerClient();
-      const cas = await cc.fetchAssets();
-      cas.forEach(a => {
+      as.forEach(a => {
         if (bm[a.asset_id]) return;
         bm[a.asset_id] = {
           asset_id: a.asset_id,
@@ -306,6 +306,8 @@ export const useAppStore = createStore<AppState>(
 
       const assets = await client.safe.fetchAssets(Object.keys(bm));
       const fbm = assets.reduce((prev, cur) => {
+        if (cur.chain_id === SOL_ASSET_ID && deployedAddrs.includes(cur.asset_key)) 
+          return prev;
         const b = bm[cur.asset_id]
         const v: UserAssetBalance = { ...b, asset: {
           ...cur,
