@@ -29,7 +29,7 @@ import { breakpoints } from './foundations/breakpoints'
 import { radii } from './foundations/radii'
 
 const config: ThemeConfig = {
-  initialColorMode: 'light',
+  initialColorMode: 'system',
   useSystemColorMode: false
 }
 
