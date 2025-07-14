@@ -84,7 +84,7 @@ export function SwapPanel({
   const [inputMint, setInputMint] = useState<string>(PublicKey.default.toBase58())
   const [swapType, setSwapType] = useState<'BaseIn' | 'BaseOut'>('BaseIn')
 
-  const [outputMint, setOutputMint] = useState<string>(RAYMint.toBase58())
+  const [outputMint, setOutputMint] = useState<string>("CvJmpFKM3jT7o3K5yumJNB1ffmz19XWGZXT4KtmDB6x8")
   const [tokenInput, tokenOutput] = [getToken(inputMint), getToken(outputMint)]
   const [cacheLoaded, setCacheLoaded] = useState(false)
   const isTokenLoaded = tokenMap.size > 0

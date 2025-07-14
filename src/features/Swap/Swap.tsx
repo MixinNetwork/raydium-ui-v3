@@ -23,14 +23,13 @@ import { TimeType } from '@/hooks/pool/useFetchPoolKLine'
 import { SlippageAdjuster } from '@/components/SlippageAdjuster'
 import { getMintPriority } from '@/utils/token'
 import Tooltip from '@/components/Tooltip'
-import { MoonpayBuy } from '@/components/Moonpay'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
 import useResponsive from '@/hooks/useResponsive'
 
 export default function Swap() {
   // const { inputMint: cacheInput, outputMint: cacheOutput } = getSwapPairCache()
   const [inputMint, setInputMint] = useState<string>(PublicKey.default.toBase58())
-  const [outputMint, setOutputMint] = useState<string>(RAYMint.toBase58())
+  const [outputMint, setOutputMint] = useState<string>("CvJmpFKM3jT7o3K5yumJNB1ffmz19XWGZXT4KtmDB6x8")
   const [isPCChartShown, setIsPCChartShown] = useState<boolean>(true)
   const [isMobileChartShown, setIsMobileChartShown] = useState<boolean>(false)
   const [isChartLeft, setIsChartLeft] = useState<boolean>(true)
@@ -131,14 +130,14 @@ export default function Swap() {
       >
         <GridItem gridArea="controls">
           <HStack justifyContent="space-between" my={[1, 0]}>
-            <MoonpayBuy>
+            {/* <MoonpayBuy>
               <HStack gap={1}>
                 <CreditCardIcon />
                 <Text color={colors.textLink} fontWeight="medium">
                   Buy
                 </Text>
               </HStack>
-            </MoonpayBuy>
+            </MoonpayBuy> */}
             <HStack>
               <SlippageAdjuster />
               <Tooltip

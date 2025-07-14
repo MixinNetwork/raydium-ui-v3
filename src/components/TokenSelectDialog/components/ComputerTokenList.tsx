@@ -1,5 +1,5 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useState, useRef, forwardRef, useImperativeHandle } from 'react'
-import { TokenInfo } from '@raydium-io/raydium-sdk-v2'
+import { SOLMint, TokenInfo } from '@raydium-io/raydium-sdk-v2'
 import { useTranslation } from 'react-i18next'
 import { useEvent } from '@/hooks/useEvent'
 import SearchIcon from '@/icons/misc/SearchIcon'
@@ -36,6 +36,7 @@ export default forwardRef<
   }
 >(function TokenList({ onOpenTokenList, isDialogOpen: isOpen, onChooseToken, filterFn }, ref) {
   const { t } = useTranslation()
+  const user = useAppStore((s) => s.user);
   const mixinTokenAccountMap = useAppStore((s) => s.balanceAddressMap);
   const computerAssetAddressMap = useTokenStore((s) => s.computerAssetAddressMap)
   const tokenList = useTokenStore((s) => s.displayTokenList)
@@ -85,31 +86,54 @@ export default forwardRef<
       }
       return -1
     }
-    console.log(mixinTokenAccountMap)
-    const list = Object.values(mixinTokenAccountMap).reduce((prev, balance) => {
-      if (
-        balance?.hide ||
-        !balance.address || 
-        (balance.asset.chain_id !== SOL_ASSET_ID && !computerAssetAddressMap[balance.address])
-      ) return prev;
-      const uri = balance.asset.chain_id !== SOL_ASSET_ID 
-        ? computerAssetAddressMap[balance.address].uri 
-        : balance.asset.icon_url;
-      const decimals = balance.asset.chain_id === SOL_ASSET_ID ? balance.asset.precision : 8;
-      prev.push({
-        address: balance.address,
-        chainId: 101,
-        decimals,
-        extensions: {},
-        logoURI: uri,
-        name: balance.asset.name,
-        programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-        symbol: balance.asset.symbol,
-        tags: [],
-        priority: 90,
+    const list = user 
+      ? Object.values(mixinTokenAccountMap).reduce((prev, balance) => {
+        if (
+          balance?.hide ||
+          !balance.address || 
+          (balance.asset.chain_id !== SOL_ASSET_ID && !computerAssetAddressMap[balance.address])
+        ) return prev;
+        const uri = balance.asset.chain_id !== SOL_ASSET_ID 
+          ? computerAssetAddressMap[balance.address].uri 
+          : balance.asset.icon_url;
+        const decimals = balance.asset.chain_id === SOL_ASSET_ID ? balance.asset.precision : 8;
+        prev.push({
+          address: balance.address,
+          chainId: 101,
+          decimals,
+          extensions: {},
+          logoURI: uri,
+          name: balance.asset.name,
+          programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          symbol: balance.asset.symbol,
+          tags: [],
+          priority: 90,
+        })
+        return prev;
+      }, [] as TokenInfo[])
+      : [...Object.values(computerAssetAddressMap), {
+          asset_id: SOL_ASSET_ID,
+          chain_id: SOL_ASSET_ID,
+          name: "Solana",
+          symbol: "SOL",
+          address: SOLMint.toString(),
+          decimals: 9,
+          uri: "https://images.mixin.one/eTzm8_cWke8NqJ3zbQcx7RkvbcTytD_NgBpdwIAgKJRpOoo0S0AQ3IQ-YeBJgUKmpsMPUHcZFzfuWowv3801cF5HXfya5MQ9fTA9HQ=s128",
+          price_usd: '0',
+      }].map(a => {
+        return {
+          address: a.address,
+          chainId: 101,
+          decimals: a.decimals,
+          extensions: {},
+          logoURI: a.uri,
+          name: a.name,
+          programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          symbol: a.symbol,
+          tags: [],
+          priority: 90,
+        }
       })
-      return prev;
-    }, [] as TokenInfo[])
     const sortedTokenList = sortItems(list, {
       sortRules: [
         // { value: (i) => (i.address === SOLMint || i.address === RAYMint ? i.address : null) },
@@ -126,7 +150,7 @@ export default forwardRef<
     const filteredList = search ? filterFilteredMixinTokenFn(sortedTokenList, { searchStr: search }) : sortedTokenList
     setDisplayList(filteredList.slice(0, perPage))
     setFilteredList(filteredList)
-  }, [search, tokenList, tokenAccountMap, orgTokenMap, tokenPrice])
+  }, [user, search, tokenList, tokenAccountMap, orgTokenMap, tokenPrice])
 
   const tempSetNewToken = orgTokenMap.get(search)
   const { tokenInfo: newToken } = useTokenInfo({
@@ -302,21 +326,21 @@ function FilteredMixinTokenRowItem({
     >
       <Flex w="full" justifyContent={'space-between'} _hover={{ '.addRemoveCtrlContent': { display: 'flex' } }}>
         <Flex w="0" flexGrow={1} minW="0">
-          <TokenAvatar icon={token.balance.asset?.icon_url} mr="2" />
+          <TokenAvatar icon={token.info.logoURI} mr="2" />
           <Box w="100%" minW="0" overflow="hidden">
             <Box display="flex" gap={2} alignItems="center">
               <Text color={colors.textSecondary} mt="0.5">
-                {token.balance.asset?.symbol}
+                {token.info.symbol}
               </Text>
             </Box>
             <Text color={colors.textTertiary} isTruncated fontSize="xs">
-              {token.balance.asset?.name}
+              {token.info.name}
             </Text>
           </Box>
         </Flex>
         <Box flexShrink={0}>
           <Box color={colors.textSecondary} textAlign="right">
-            {formatToRawLocaleStr(token.balance.total_amount)}
+            {token.balance ? formatToRawLocaleStr(token.balance.total_amount) : '0'}
             <AddressChip
               onClick={(ev) => ev.stopPropagation()}
               color={colors.textTertiary}
