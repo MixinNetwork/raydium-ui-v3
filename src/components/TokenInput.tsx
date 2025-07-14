@@ -186,7 +186,9 @@ function TokenInput(props: TokenInputProps) {
   const balanceAmount = token && balanceAddressMap[token.address] 
     ? new Decimal(balanceAddressMap[token.address].total_amount) 
     : new Decimal(0)
-  const totalPrice = new Decimal(value || 0).mul(balance?.asset?.price_usd || 0)
+  const totalPrice = value && token 
+    ? new Decimal(value).mul(balanceAddressMap[token.address].asset.price_usd)
+    : new Decimal(0)
   const balanceMaxString = hideBalance
     ? null
     : trimTrailZero(balanceAmount.mul(maxMultiplier || 1).toFixed(token?.decimals ?? 6, Decimal.ROUND_FLOOR))
