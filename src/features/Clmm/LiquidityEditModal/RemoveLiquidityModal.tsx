@@ -42,6 +42,7 @@ import { ComputerSystemCallRequest } from '@/types/computer'
 import { initComputerClient } from '@/api/computer'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
 import { MixinMultipleTracesModal } from '@/components/Mixin/MixinMultipleTracesModal'
+import { useCheckMessenger } from '@/utils/mixin'
 
 export default function RemoveLiquidityModal({
   isOpen,
@@ -169,7 +170,14 @@ export default function RemoveLiquidityModal({
   const handleClosePositionChange = useEvent((event: ChangeEvent<HTMLInputElement>) => {
     setClosePosition(!event.target.checked)
   })
-
+  
+  const openTraceModal = (req: ComputerSystemCallRequest) => {
+    if (useCheckMessenger()) {
+      location.href = req.value;
+      return;
+    }
+    onOpenTraceModal();
+  };
   const handleRemove = useCallback(async () => {
     setIsSending(true)
     const reqs = await removeLiquidityAct({
@@ -190,7 +198,7 @@ export default function RemoveLiquidityModal({
       onError: () => setIsSending(false)
     })
     setRequests(reqs);
-    onOpenTraceModal();
+    openTraceModal(reqs[0]);
   }, [minTokenAmount])
   useEffect(() => {
     if (requests.length === 0) return;

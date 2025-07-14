@@ -45,6 +45,7 @@ import { ComputerSystemCallRequest, UserAssetBalance } from '@/types/computer'
 import { MixinMultipleTracesModal } from '@/components/Mixin/MixinMultipleTracesModal'
 import { initComputerClient } from '@/api/computer'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
+import { useCheckMessenger } from '@/utils/mixin'
 
 export default function AddLiquidityModal({
   isOpen,
@@ -196,7 +197,14 @@ export default function AddLiquidityModal({
     onSyncSending(sending)
     return () => onSyncSending(false)
   }, [sending, onSyncSending])
-
+  
+  const openTraceModal = (req: ComputerSystemCallRequest) => {
+    if (useCheckMessenger()) {
+      location.href = req.value;
+      return;
+    }
+    onOpenTraceModal();
+  };
   const addLiquidity = async () => {
     setIsSending(true)
     const res = await increaseLiquidityAct({
@@ -216,7 +224,7 @@ export default function AddLiquidityModal({
       }
     })
     setRequests(res);
-    onOpenTraceModal();
+    openTraceModal(res[0]);
   }
   useEffect(() => {
     if (requests.length === 0) return;

@@ -48,6 +48,7 @@ import { ComputerSystemCallRequest, Token } from '@/types/computer'
 import { MixinMultipleTracesModal } from '@/components/Mixin/MixinMultipleTracesModal'
 import { initComputerClient } from '@/api/computer'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
+import { useCheckMessenger } from '@/utils/mixin'
 
 export function SwapPanel({
   onInputMintChange,
@@ -272,7 +273,14 @@ export function SwapPanel({
     offHightRiskOpen()
     handleClickSwap()
   })
-
+  
+  const openTraceModal = (req: ComputerSystemCallRequest) => {
+    if (useCheckMessenger()) {
+      location.href = req.value;
+      return;
+    }
+    onOpenTraceModal();
+  };
   const handleClickSwap = async () => {
     if (!response) return
     sendingResult.current = response as ApiSwapV1OutSuccess
@@ -293,7 +301,7 @@ export function SwapPanel({
       }
     })
     setRequests(reqs)
-    onOpenTraceModal();
+    openTraceModal(reqs[0]);
   }
   useEffect(() => {
     if (requests.length === 0) return;

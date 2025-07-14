@@ -29,6 +29,7 @@ import { initComputerClient } from '@/api/computer'
 import { Asset, ComputerSystemCallRequest, Token } from '@/types/computer'
 import { MixinMultipleTracesModal } from '@/components/Mixin/MixinMultipleTracesModal'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
+import { useCheckMessenger } from '@/utils/mixin'
 
 export default function CreateClmmPool() {
   const isMobile = useAppStore((s) => s.isMobile)
@@ -166,7 +167,14 @@ export default function CreateClmmPool() {
   const handleChangeStep = useCallback((newStep: number) => {
     setStep(newStep)
   }, [])
-
+  
+  const openTraceModal = (req: ComputerSystemCallRequest) => {
+    if (useCheckMessenger()) {
+      location.href = req.value;
+      return;
+    }
+    onOpenTraceModal();
+  };
   const handleCreateAndOpen = useEvent(
     exhaustCall(async () => {
       setIsTxSending(true)
@@ -204,7 +212,7 @@ export default function CreateClmmPool() {
         onFinally: () => setIsTxSending(false)
       })
       setRequests(requests);
-      onOpenTraceModal();
+      openTraceModal(requests[0]);
     })
   )
   useEffect(() => {

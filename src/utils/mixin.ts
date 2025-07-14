@@ -2,7 +2,7 @@ import { parse, stringify } from "uuid";
 import md5 from 'md5';
 import BigNumber from 'bignumber.js';
 import { OperationTypeAddUser, SOL_ASSET_ID, XIN_ASSET_ID } from "./constant";
-import { attachInvoiceEntry, attachStorageEntry, base64RawURLEncode, buildMixAddress, InvoiceEntry, newMixinInvoice } from "@mixin.dev/mixin-node-sdk";
+import { attachInvoiceEntry, attachStorageEntry, base64RawURLEncode, buildMixAddress, InvoiceEntry, newMixinInvoice, WebViewApi } from "@mixin.dev/mixin-node-sdk";
 import { ComputerInfoResponse } from "@/types/computer";
 import { add } from "./number";
 
@@ -93,3 +93,14 @@ export const buildInvoiceWithEntries = (recipient: string, storageEntry: Invoice
   attachInvoiceEntry(invoice, feeEntry)
   return invoice
 }
+
+export const useCheckMessenger = () => {
+  const client = WebViewApi();
+  const platform = client.getMixinContext().platform;
+  switch (platform) {
+    case 'iOS':
+    case 'Android':
+      return true;
+  }
+  return false;
+};
