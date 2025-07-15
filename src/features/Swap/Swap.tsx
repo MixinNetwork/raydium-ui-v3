@@ -140,28 +140,6 @@ export default function Swap() {
             </MoonpayBuy> */}
             <HStack>
               <SlippageAdjuster />
-              <Tooltip
-                label={t('swap.blink_referral_desc', {
-                  symbol: outputMint === solMintAddress ? tokenMap.get(inputMint)?.symbol : tokenMap.get(outputMint)?.symbol
-                })}
-              >
-                <Box
-                  cursor="pointer"
-                  opacity={isBlinkReferralActive ? 1 : 0.6}
-                  onClick={() => {
-                    if (isBlinkReferralActive) {
-                      onCopy()
-                      toastSubject.next({
-                        status: 'success',
-                        title: t('common.copy_success')
-                      })
-                    }
-                  }}
-                >
-                  <LinkIcon />
-                </Box>
-              </Tooltip>
-
               {!isMobile && isPCChartShown && (
                 <Box
                   cursor="pointer"

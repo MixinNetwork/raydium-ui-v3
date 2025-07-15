@@ -55,16 +55,6 @@ export function MobileBottomNavbar() {
         icon={(colorMode) => <PortfolioPageThumbnailIcon colorMode={colorMode} isActive={isPortfolioActive} />}
         isActive={isPortfolioActive}
       />
-      <Menu size="lg" placement="top-end" offset={[0, 30]} /* make menu popup higher */>
-        <MenuButton as="div">
-          <BottomNavbarItem
-            text={t('common.nav_text_more')}
-            icon={(colorMode) => <MorePageThumbnailIcon colorMode={colorMode} isActive={isMoreActive} />}
-            isActive={isMoreActive}
-          />
-        </MenuButton>
-        <NavMoreButtonMenuPanel />
-      </Menu>
     </SimpleGrid>
   )
 }
