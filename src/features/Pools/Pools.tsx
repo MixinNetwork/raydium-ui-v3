@@ -270,6 +270,7 @@ export default function Pools() {
     shouldFetch: !hasSearch,
     type: activeTabItem.value,
     order: order ? 'desc' : 'asc',
+    sort: (sortKey !== 'liquidity' && sortKey !== 'default' ? `${sortKey}${timeBase}` : sortKey) as FetchPoolParams['sort']
   });
   const info = orgData.reduce((prev, cur) => {
     prev.tvl = prev.tvl.plus(cur.tvl)

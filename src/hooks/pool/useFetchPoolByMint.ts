@@ -166,10 +166,54 @@ export function useFetchPoolsByMint<T extends PoolFetchType>(
     pm[p.id] = p;
   })
 
-  console.log(order)
   const res = Object.values(pm).sort((a, b) => {
-    if (order === 'desc') return a.tvl >= b.tvl ? -1 : 1;
-    return a.tvl >= b.tvl? 1 : -1;
+    let av: number = 0;
+    let bv: number = 0;
+    switch (sort) {
+      case "liquidity":
+        av = a.tvl;
+        bv = b.tvl;
+        break;
+      case "volume24h":
+        av = a.day.volume
+        bv = b.day.volume
+        break;
+      case "volume7d":
+        av = a.week.volume
+        bv = b.week.volume
+        break;
+      case "volume30d":
+        av = a.month.volume
+        bv = b.month.volume
+        break;
+      case "fee24h":
+        av = a.day.volumeFee
+        bv = b.day.volumeFee
+        break;
+      case "fee7d":
+        av = a.week.volumeFee
+        bv = b.week.volumeFee
+        break;
+      case "fee30d":
+        av = a.month.volumeFee
+        bv = b.month.volumeFee
+        break;
+      case "apr24h":
+        av = a.day.apr
+        bv = b.day.apr
+        break;
+      case "apr7d":
+        av = a.week.apr
+        bv = b.week.apr
+        break;
+      case "apr30d":
+        av = a.month.apr
+        bv = b.month.apr
+        break;
+    }
+    
+    if (order === 'desc') return av >= bv ? -1 : 1;
+    return av >= bv ? 1 : -1;
   })
 
   return {
