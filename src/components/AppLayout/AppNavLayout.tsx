@@ -239,15 +239,9 @@ function SettingsMenuModalContent(props: { isOpen: boolean; triggerRef: React.Re
           <Divider />
           <SlippageToleranceSettingField variant="liquidity" />
           <Divider />
-          <VersionedTransactionSettingField />
-          <Divider />
-          <DefaultExplorerSettingField />
-          <Divider />
           <LanguageSettingField />
           <Divider />
           <ColorThemeSettingField />
-          <Divider />
-          <RPCConnectionSettingField />
           <Divider />
           <AppVersion />
         </ModalBody>
