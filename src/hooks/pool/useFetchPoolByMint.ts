@@ -116,13 +116,13 @@ export function useFetchPoolsByMint<T extends PoolFetchType>(
     shouldFetch,
     showFarms,
     type = PoolFetchType.All,
-    sort = 'default',
+    sort = 'liquidity',
     order = 'desc',
     pageSize = 100,
     refreshInterval = MINUTE_MILLISECONDS,
     poolId
   } = props || {}
-
+  
   const fetcher = useCallback(
     async (urls: string[]) => {
       const responses = await Promise.all(urls.map(url => axios.get<PoolsApiReturn>(url, {
@@ -170,6 +170,8 @@ export function useFetchPoolsByMint<T extends PoolFetchType>(
     let av = 0;
     let bv = 0;
     switch (sort) {
+      // @ts-ignore
+      case "default":
       case "liquidity":
         av = a.tvl;
         bv = b.tvl;
