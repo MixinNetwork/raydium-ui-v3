@@ -1,6 +1,5 @@
 import { useDisclosure } from '@/hooks/useDelayDisclosure'
-import RaydiumLogo from '@/icons/RaydiumLogo'
-import RaydiumLogoOutline from '@/icons/RaydiumLogoOutline'
+import Logo from '@/icons/Logo'
 import Gear from '@/icons/misc/Gear'
 import { useAppStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
@@ -72,13 +71,13 @@ function AppNavLayout({
         <Desktop>
           <Box flex={'none'}>
             <Link href="/swap">
-              <RaydiumLogo />
+              <Logo />
             </Link>
           </Box>
         </Desktop>
         <Mobile>
           <HStack>
-            <RaydiumLogoOutline />
+            <Logo />
             <Text fontSize="xl" fontWeight="medium" color={colors.textSecondary}>
               {pathname === '/swap'
                 ? t('swap.title')
