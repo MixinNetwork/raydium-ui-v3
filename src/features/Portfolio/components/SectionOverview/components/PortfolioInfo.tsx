@@ -263,19 +263,6 @@ export default function PortfolioInfo({
                     {formatCurrency(currentAsset.summary.toString(), { symbol: '$', decimalPlaces: 2 })}
                   </Text>
                 </GridItem>
-                {tab !== 'Assets by token' ? (
-                  <GridItem area={'tab'} alignSelf={'center'} justifySelf={'end'}>
-                    <Select
-                      variant="filledFlowDark"
-                      sx={{ minWidth: '160px' }}
-                      items={[
-                        { value: AssetType.ALL, label: t('portfolio.section_department_tab_all') },
-                      ]}
-                      value={currentType}
-                      onChange={(t) => onTypeChange(t as AssetType)}
-                    />
-                  </GridItem>
-                ) : null}
 
                 <GridItem area={'list'}>
                   <PortfolioAssetList assetList={currentAsset.list} />
