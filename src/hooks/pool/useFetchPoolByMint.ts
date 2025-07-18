@@ -167,8 +167,8 @@ export function useFetchPoolsByMint<T extends PoolFetchType>(
   })
 
   const res = Object.values(pm).sort((a, b) => {
-    let av: number = 0;
-    let bv: number = 0;
+    let av = 0;
+    let bv = 0;
     switch (sort) {
       case "liquidity":
         av = a.tvl;

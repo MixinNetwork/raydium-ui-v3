@@ -31,7 +31,7 @@ export default function MixinWallet() {
           </Button>
         )
       }
-      <MixinLoginModal isOpen={show} onClose={handleClose}/>
+      { show && <MixinLoginModal isOpen={true} onClose={handleClose}/> }
     </Box>
   )
 }
