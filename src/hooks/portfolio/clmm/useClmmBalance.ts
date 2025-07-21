@@ -14,13 +14,14 @@ import Decimal from 'decimal.js'
 import useSWR from 'swr'
 
 import useRefreshEpochInfo from '@/hooks/app/useRefreshEpochInfo'
-import { useAppStore, useTokenAccountStore, initTokenAccountSate } from '@/store'
+import { useAppStore, useTokenAccountStore, initTokenAccountSate, useTokenStore } from '@/store'
 import { useEvent } from '@/hooks/useEvent'
 import ToPublicKey from '@/utils/publicKey'
 import logMessage from '@/utils/log'
 import { getPdaIdCache } from '@/utils/pool/pdaCache'
 import { SOL_ASSET_ID } from '@/utils/constant'
 import { eq } from '@/utils/number'
+import BN from 'bn.js'
 
 export type ClmmPosition = ReturnType<typeof PositionInfoLayout.decode> & { key?: string; slot: number }
 export type ClmmDataMap = Map<string, ClmmPosition[]>
@@ -96,13 +97,16 @@ export default function useClmmBalance({
   useRefreshEpochInfo()
 
   const balanceMints = useMemo(() => {
-    return tokenAccountRawInfos.filter((acc) => {
+    const mixinRCL = tokenAccountRawInfos.filter((acc) => {
       const asset = balanceAddressMap[acc.accountInfo.mint.toString()];
       return asset && eq(asset.total_amount, "1") && 
         asset.asset.chain_id === SOL_ASSET_ID &&
         asset.asset.asset_id !== SOL_ASSET_ID &&
         asset.asset.name.includes('Liquidity')
-    })
+    });
+    const tokenMap = useTokenStore.getState().tokenMap
+    const solanaRCL = tokenAccountRawInfos.filter((acc) => acc.accountInfo.amount.eq(new BN(1)) && !tokenMap.has(acc.accountInfo.mint.toBase58()))
+    return [...mixinRCL, ...solanaRCL]
   }, [tokenAccountRawInfos, balanceAddressMap])
 
   const allLockMints = useMemo(
