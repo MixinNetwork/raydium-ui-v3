@@ -3,7 +3,7 @@ import { Button, Box, ButtonProps } from '@chakra-ui/react'
 import { LegacyRef, PropsWithChildren, forwardRef, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
-import { handleComputerRegisterSchema } from '@/utils/mixin'
+import { checkMessenger, handleComputerRegisterSchema } from '@/utils/mixin'
 import MixinWallet from './Mixin'
 import { MixinModal } from './Mixin/MixinModal'
 
@@ -53,7 +53,8 @@ export default forwardRef(function ConnectedButton({ children, onClick, isDisabl
     }
     const url = handleComputerRegisterSchema(info, mix);
     setSchema(url);
-    handleShow()
+    if (checkMessenger()) location.href = url;
+    else handleShow();
   }
 
   return (
