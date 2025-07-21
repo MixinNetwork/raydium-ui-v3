@@ -505,10 +505,8 @@ export const useClmmStore = createStore<ClmmState>(
           })
         }
 
-        console.log(buildData.transaction)
         const { transactions: txs } = await buildData.builder.sizeCheckBuildV0();
         if (txs.length !== 1) throw new Error('invalid open position transaction');
-        console.log(txs[0])
         txs[0].message.recentBlockhash = nonce.nonce_hash;
         txs[0].sign(insInfo.signers);
         const tx2 = Buffer.from(txs[0].serialize());
@@ -595,7 +593,7 @@ export const useClmmStore = createStore<ClmmState>(
       onError,
       onFinally,
     }) => {
-      const { raydium, txVersion, getEpochInfo } = useAppStore.getState()      
+      const { raydium, txVersion, balanceAddressMap, getEpochInfo } = useAppStore.getState()      
       const { publicKey, connection, account, info, getUserMix, getComputerRecipient } = useAppStore.getState()
       const computer = getComputerRecipient()
       if (!publicKey || !raydium || !connection || !info || !computer || !account) {
@@ -667,6 +665,7 @@ export const useClmmStore = createStore<ClmmState>(
         }).compileToV0Message();
         const tx = new VersionedTransaction(messageV0);
 
+        const nft = position.nftMint.toString()
         const memo = Buffer.from(tx.serialize());
         const trace = uniqueConversationID(memo.toString('hex'), "system call");
         const extra = buildComputerExtra(
@@ -678,14 +677,16 @@ export const useClmmStore = createStore<ClmmState>(
         const invoice = newMixinInvoice(computer);
         if (!invoice) throw new Error('computer connection failed');
         attachStorageEntry(invoice, uniqueConversationID(trace, "storage"), memo)
-        attachInvoiceEntry(invoice, {
-          trace_id: uniqueConversationID(trace, position.nftMint.toString()),
-          asset_id: buildAssetId(position.nftMint.toString()),
-          amount: "1",
-          extra: referenceExtra,
-          index_references: [],
-          hash_references: []
-        })
+        if (balanceAddressMap[nft]) {
+          attachInvoiceEntry(invoice, {
+            trace_id: uniqueConversationID(trace, nft),
+            asset_id: buildAssetId(nft),
+            amount: "1",
+            extra: referenceExtra,
+            index_references: [],
+            hash_references: []
+          })
+        }
         attachInvoiceEntry(invoice, {
           trace_id: trace,
           asset_id: XIN_ASSET_ID,
@@ -878,6 +879,7 @@ export const useClmmStore = createStore<ClmmState>(
           return [];
         }
 
+        const nft = position.nftMint.toString();
         const amount1 = formatUnits(new BN(amountMaxA).toString(), poolInfo.mintA.decimals).toString();
         const amount2 = formatUnits(new BN(amountMaxB).toString(), poolInfo.mintB.decimals).toString();
         const token1 = balanceAddressMap[poolInfo.mintA.address === WSOLMint.toString() ? SOLMint.toString() : poolInfo.mintA.address]
@@ -911,20 +913,22 @@ export const useClmmStore = createStore<ClmmState>(
           index_references: [],
           hash_references: []
         })
-        attachInvoiceEntry(invoice, {
-          trace_id: uniqueConversationID(trace, position.nftMint.toString()),
-          asset_id: buildAssetId(position.nftMint.toString()),
-          amount: "1",
-          extra: referenceExtra,
-          index_references: [],
-          hash_references: []
-        })
+        if (balanceAddressMap[nft]) {
+          attachInvoiceEntry(invoice, {
+            trace_id: uniqueConversationID(trace, nft),
+            asset_id: buildAssetId(nft),
+            amount: "1",
+            extra: referenceExtra,
+            index_references: [],
+            hash_references: []
+          })
+        }
         attachInvoiceEntry(invoice, {
           trace_id: trace,
           asset_id: XIN_ASSET_ID,
           amount: info.params.operation.price,
           extra: Buffer.from(extra),
-          index_references: [0, 1, 2, 3],
+          index_references: invoice.entries.map((_, i) => i),
           hash_references: []
         })
 
