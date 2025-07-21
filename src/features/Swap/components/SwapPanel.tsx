@@ -1,6 +1,6 @@
 import ConnectedButton from '@/components/ConnectedButton'
 import { QuestionToolTip } from '@/components/QuestionToolTip'
-import TokenInput, { DEFAULT_SOL_RESERVER, InputActionRef } from '@/components/TokenInput'
+import TokenInput, { InputActionRef } from '@/components/TokenInput'
 import { useEvent } from '@/hooks/useEvent'
 import { useHover } from '@/hooks/useHover'
 import { useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
@@ -17,12 +17,11 @@ import {
   CircularProgress,
   Tooltip as ChakraTip,
 } from '@chakra-ui/react'
-import { ApiV3Token, RAYMint, SOL_INFO, TokenInfo, TransferFeeDataBaseType } from '@raydium-io/raydium-sdk-v2'
+import { ApiV3Token, TokenInfo, TransferFeeDataBaseType } from '@raydium-io/raydium-sdk-v2'
 import { PublicKey } from '@solana/web3.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import shallow from 'zustand/shallow'
-import CircleInfo from '@/icons/misc/CircleInfo'
 import { getSwapPairCache, setSwapPairCache } from '../util'
 import { urlToMint, mintToUrl, isSolWSol, getMintPriority, getMintSymbol } from '@/utils/token'
 import { SwapInfoBoard } from './SwapInfoBoard'
@@ -34,11 +33,8 @@ import { useSwapStore } from '../useSwapStore'
 import Decimal from 'decimal.js'
 import HighRiskAlert from './HighRiskAlert'
 import { useRouteQuery, setUrlQuery } from '@/utils/routeTools'
-import WarningIcon from '@/icons/misc/WarningIcon'
 import dayjs from 'dayjs'
-import { NATIVE_MINT } from '@solana/spl-token'
-import { Trans } from 'react-i18next'
-import { formatCurrency, formatToRawLocaleStr } from '@/utils/numberish/formatter'
+import { formatCurrency } from '@/utils/numberish/formatter'
 import ToPublicKey, { isValidPublicKey } from '@/utils/publicKey'
 import useTokenInfo from '@/hooks/token/useTokenInfo'
 import { debounce } from '@/utils/functionMethods'
@@ -67,9 +63,7 @@ export function SwapPanel({
   const { t, i18n } = useTranslation()
   const balanceAddressMap = useAppStore((s) => s.balanceAddressMap)
   const { swap: swapDisabled } = useAppStore().featureDisabled
-  const explorerUrl = useAppStore((s) => s.explorerUrl)
   const swapTokenAct = useSwapStore((s) => s.swapTokenAct)
-  const unWrapSolAct = useSwapStore((s) => s.unWrapSolAct)
   const getToken = useTokenStore((s) => s.getToken)
   const tokenMap = useTokenStore((s) => s.tokenMap)
   const [getTokenBalanceUiAmount, fetchTokenAccountAct, refreshTokenAccTime] = useTokenAccountStore(
@@ -77,10 +71,8 @@ export function SwapPanel({
     shallow
   )
   const { isOpen: isSending, onOpen: onSending, onClose: offSending } = useDisclosure()
-  const { isOpen: isUnWrapping, onOpen: onUnWrapping, onClose: offUnWrapping } = useDisclosure()
   const { isOpen: isHightRiskOpen, onOpen: onHightRiskOpen, onClose: offHightRiskOpen } = useDisclosure()
   const sendingResult = useRef<ApiSwapV1OutSuccess | undefined>()
-  const wsolBalance = getTokenBalanceUiAmount({ mint: NATIVE_MINT.toBase58(), decimals: SOL_INFO.decimals })
 
   const [inputMint, setInputMint] = useState<string>(PublicKey.default.toBase58())
   const [swapType, setSwapType] = useState<'BaseIn' | 'BaseOut'>('BaseIn')
@@ -143,16 +135,6 @@ export function SwapPanel({
   const [requests, setRequests] = useState<ComputerSystemCallRequest[]>([])  
   const { isOpen: isTraceModalOpen, onOpen: onOpenTraceModal, onClose: onCloseTraceModal } = useDisclosure()
 
-  const handleUnwrap = useEvent(() => {
-    onUnWrapping()
-    unWrapSolAct({
-      amount: wsolBalance.rawAmount.toFixed(0),
-      onSent: offUnWrapping,
-      onClose: offUnWrapping,
-      onError: offUnWrapping
-    })
-  })
-
   const isSwapBaseIn = swapType === 'BaseIn'
   const { response, data, isLoading, isValidating, error, openTime, mutate } = useSwap({
     inputMint,
@@ -163,6 +145,12 @@ export function SwapPanel({
     swapType,
     refreshInterval: isSending || isHightRiskOpen ? 3 * 60 * 1000 : 1000 * 30
   })
+
+  const routes = response?.data?.routePlan.length || 0;
+  let routesError = undefined;
+  if (routes > 1) {
+    routesError = 'Cannot Swap Directly'
+  }
 
   const onPriceUpdatedConfirm = useEvent(() => {
     setNeedPriceUpdatedAlert(false)
@@ -266,7 +254,7 @@ export function SwapPanel({
       : new Decimal(0)
   const balanceNotEnough = balanceAmount.lt(inputAmount || 0) ? t('error.balance_not_enough') : undefined
   // const isSolFeeNotEnough = inputAmount && isSolWSol(inputMint || '') && balanceAmount.sub(inputAmount || 0).lt(DEFAULT_SOL_RESERVER)
-  const swapError = (error && i18n.exists(`swap.error_${error}`) ? t(`swap.error_${error}`) : error) || balanceNotEnough
+  const swapError = routesError || (error && i18n.exists(`swap.error_${error}`) ? t(`swap.error_${error}`) : error) || balanceNotEnough
   const isPoolNotOpenError = !!swapError && !!openTime
 
   const handleHighRiskConfirm = useEvent(() => {
@@ -405,18 +393,20 @@ export function SwapPanel({
         />
       </Flex>
       {/* swap info */}
-      <Collapse in={hasValidAmountOut} animateOpacity>
-        <Box mb={[4, 5]}>
-          <SwapInfoBoard
-            amountIn={amountIn}
-            tokenInput={tokenInput}
-            tokenOutput={tokenOutput}
-            isComputing={isComputing && !isSending}
-            computedSwapResult={computeResult}
-            onRefresh={handleRefresh}
-          />
-        </Box>
-      </Collapse>
+      {
+        routes === 1 && <Collapse in={hasValidAmountOut} animateOpacity>
+          <Box mb={[4, 5]}>
+            <SwapInfoBoard
+              amountIn={amountIn}
+              tokenInput={tokenInput}
+              tokenOutput={tokenOutput}
+              isComputing={isComputing && !isSending}
+              computedSwapResult={computeResult}
+              onRefresh={handleRefresh}
+            />
+          </Box>
+        </Collapse>
+      }
 
       <Collapse in={needPriceUpdatedAlert}>
         <Box pb={[4, 5]}>
