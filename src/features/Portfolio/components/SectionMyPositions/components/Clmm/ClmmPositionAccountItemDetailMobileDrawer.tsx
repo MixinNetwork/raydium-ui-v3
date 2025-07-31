@@ -319,9 +319,9 @@ export default function ClmmPositionAccountItemDetailMobileDrawer({
                     }}
                   />
                 </HStack>
-                <Button isLoading={isLoading} isDisabled={!hasReward} onClick={handleHarvest} size="sm" fontSize="md" variant="outline">
+                {/* <Button isLoading={isLoading} isDisabled={!hasReward} onClick={handleHarvest} size="sm" fontSize="md" variant="outline">
                   {t('portfolio.section_positions_clmm_account_pending_yield_button')}
-                </Button>
+                </Button> */}
               </Flex>
             </Flex>
             {isLock ? null : (
