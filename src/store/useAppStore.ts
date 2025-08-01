@@ -273,6 +273,7 @@ export const useAppStore = createStore<AppState>(
       }
 
       const bm = total.reduce((prev, cur) => {
+        if (cur.inscription_hash) return prev;
         const key = cur.asset_id;
         if (prev[key]) {
           prev[key].outputs = [...prev[key].outputs, cur];
