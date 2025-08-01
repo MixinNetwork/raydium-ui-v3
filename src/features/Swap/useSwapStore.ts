@@ -1,5 +1,5 @@
 import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram } from '@solana/web3.js'
-import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget, TxVersion, WSOLMint, SOLMint } from '@raydium-io/raydium-sdk-v2'
+import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget, TxVersion, WSOLMint, SOLMint, closeAccountInstruction } from '@raydium-io/raydium-sdk-v2'
 import BN from 'bn.js'
 import BigNumber from 'bignumber.js';
 import { createStore, useAppStore, useTokenStore } from '@/store'
@@ -182,6 +182,13 @@ export const useSwapStore = createStore<SwapStore>(
             instructions.push(routeWrapSOLInstuction(publicKey, inputAccount, WSOLMint, BigInt(swapResponse.data.inputAmount)))
         }
         instructions.push(ins)
+        if (swapResponse.data.outputMint === WSOLMint.toString()) {
+          instructions.push(closeAccountInstruction({
+            tokenAccount: outputAccount,
+            payer: publicKey,
+            owner: publicKey,
+          }))
+        }
         instructions.push(...computeIns)
         
         const messageV0 = new TransactionMessage({
