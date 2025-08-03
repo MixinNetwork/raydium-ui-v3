@@ -113,8 +113,8 @@ export default forwardRef<
         { value: (i) => (i.tags.includes('unknown') ? null : i.symbol.length), compareFn }
       ]
     })
-    let filteredList = search ? filterTokenFn(sortedTokenList, { searchStr: search }) : sortedTokenList
-    filteredList = [...computerTokenList, ...sortedTokenList]
+    const l = [...computerTokenList, ...sortedTokenList];
+    const filteredList = search ? filterTokenFn(l, { searchStr: search }) : l
     setDisplayList(filteredList.slice(0, perPage))
     setFilteredList(filteredList)
   }, [search, tokenList, tokenAccountMap, orgTokenMap, tokenPrice])
