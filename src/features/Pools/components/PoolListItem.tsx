@@ -210,6 +210,10 @@ export default function PoolListItem({
                       {formatToRawLocaleStr(toPercentString(pool.feeRate * 100))}
                     </Tag>
 
+                    <Text fontSize={['sm', 'lg']} textAlign={'right'}>
+                      {formatCurrency(pool.tvl, { symbol: '$', decimalPlaces: 0 })}
+                    </Text>
+
                     {pool.isOpenBook && (
                       <Tooltip label="This pool shares liquidity to the OpenBook order-book">
                         <Flex alignItems="center">
