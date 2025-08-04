@@ -394,7 +394,7 @@ export function SwapPanel({
       </Flex>
       {/* swap info */}
       {
-        routes === 1 && <Collapse in={hasValidAmountOut} animateOpacity>
+        <Collapse in={hasValidAmountOut} animateOpacity>
           <Box mb={[4, 5]}>
             <SwapInfoBoard
               amountIn={amountIn}
