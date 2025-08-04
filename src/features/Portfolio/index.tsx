@@ -26,8 +26,6 @@ export default function Portfolio() {
       <AcceleraytorAlertChip />
       <SectionOverview />
       <SectionMyPositions />
-      <SectionMyCreatedFarms />
-      <SectionAcceleraytor />
       <Box pb={'40px'} />
     </Box>
   )

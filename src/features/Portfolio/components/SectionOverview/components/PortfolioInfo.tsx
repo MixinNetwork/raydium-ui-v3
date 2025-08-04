@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/store/useAppStore'
 import { colors } from '@/theme/cssVariables'
 import { isArray } from '@/utils/judges/judgeType'
-import { Select } from '@/components/Select'
 import Tabs from '@/components/Tabs'
 import PortfolioPieChart, { PORTFOLIO_PIE_COLORS } from './PortfolioPieChart'
 import { panelCard } from '@/theme/cssBlocks'
@@ -144,19 +143,6 @@ export default function PortfolioInfo({
             <Mobile>
               {tab !== 'Assets by token' ? (
                 <Box width="100%">
-                  {isMorePoolAssets && (
-                    <Flex justifyContent="end">
-                      <Select
-                        variant="filledFlowDark"
-                        sx={{ minWidth: '120px' }}
-                        items={[
-                          { value: AssetType.ALL, label: t('portfolio.section_department_tab_all') },
-                        ]}
-                        value={currentType}
-                        onChange={(t) => onTypeChange?.(t)}
-                      />
-                    </Flex>
-                  )}
                   <Flex direction={isMorePoolAssets ? 'column' : 'row'} align={'center'}>
                     <Box width="50%" height={[isMorePoolAssets ? '80px' : '60px', '120px']}>
                       <PortfolioPieChart
