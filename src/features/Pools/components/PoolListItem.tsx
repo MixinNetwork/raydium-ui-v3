@@ -66,6 +66,9 @@ export default function PoolListItem({
   const { colorMode } = useColorMode()
   const isLight = colorMode === 'light'
   const [isFavorite, setIsFavoriteState] = useState(getFavoritePoolCache().has(pool.id))
+  
+  const volumeJustify = isMobile ? 'start' : 'end';
+  const aprJustify = isMobile ? 'end' : 'start';
 
   const [baseToken, quoteToken] = useMemo(
     () => [
@@ -133,7 +136,7 @@ export default function PoolListItem({
     <>
       {styleType === 'list' ? (
         <Box pl={[0, 6]} px={4} py={3} background={index % 2 ? colors.backgroundTransparent07 : ''} sx={poolListGrid} onClick={onPoolClick}>
-          <Flex align="center" gap={[2, 4]}>
+          <Flex align="center">
             <Desktop>
               <Center width={6} height={6}>
                 <StarIcon selected={isFavorite} onClick={onFavoriteClick} style={{ cursor: 'pointer', minWidth: '16px' }} />
@@ -239,10 +242,10 @@ export default function PoolListItem({
                 )}
               </Box>
             </HStack>
-            <Text as={'span'} fontSize="lg" textAlign={'right'}>
-              {formatCurrency(timeData.volume, { symbol: '$', abbreviated: isMobile, decimalPlaces: 0 })}
-            </Text>
           </Desktop>
+          <Flex justify={volumeJustify} fontSize="lg" textAlign={'right'}>
+            {formatCurrency(timeData.volume, { symbol: '$', abbreviated: isMobile, decimalPlaces: 0 })}
+          </Flex>
           <Desktop>
             <Text as={'span'} fontSize={['sm', 'lg']} textAlign={'right'}>
               {formatCurrency(timeData.volumeFee, { symbol: '$', decimalPlaces: 0 })}
@@ -269,29 +272,14 @@ export default function PoolListItem({
                 </Box>
               </Desktop>
               <Mobile>
-                <HStack gap={1} justifyContent="flex-end">
-                  {pool.burnPercent > 5 && (
-                    <LockPercentCircle
-                      value={pool.burnPercent}
-                      circularProps={{
-                        size: '16px'
-                      }}
-                      iconProps={{
-                        width: 10,
-                        height: 10
-                      }}
-                    />
-                  )}
-                  <Text as={'span'} fontWeight="medium" textAlign={'right'}>
-                    {formatCurrency(timeData.volume, { symbol: '$', decimalPlaces: 0 })}
-                  </Text>
-                </HStack>
-                <HStack gap={2} justifyContent="flex-end">
-                  <Text fontSize="sm" whiteSpace="nowrap" align="revert" color={colors.lightPurple}>
-                    {formatToRawLocaleStr(toAPRPercent(timeData.apr))}
-                  </Text>
-                  <PoolListItemAprLine aprData={aprData} />
-                </HStack>
+                <Flex justify={'center'}>
+                  <Box>
+                    <Text fontSize="sm" whiteSpace="nowrap" align="revert" color={colors.lightPurple}>
+                      {formatToRawLocaleStr(toAPRPercent(timeData.apr))}
+                    </Text>
+                    <PoolListItemAprLine aprData={aprData} />
+                  </Box>
+                </Flex>
               </Mobile>
               <Desktop>
                 {/* Reward stack */}

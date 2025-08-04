@@ -17,6 +17,7 @@ export function PoolListHeader({
   handleClickSort: (key: string) => void
   timeBase: TimeBase
 }) {
+  console.log(sortKey, order, timeBase)
   const { t } = useTranslation()
   const { colorMode } = useColorMode()
   const isLight = colorMode === 'light'
@@ -29,7 +30,7 @@ export function PoolListHeader({
       borderRadius="12px 12px 0 0"
       color={isLight ? colors.textPrimary : colors.textSecondary}
       fontWeight={500}
-      px={[4, 6]}
+      px={[4, 4]}
       py={4}
       whiteSpace={'nowrap'}
       sx={poolListGrid}
@@ -64,8 +65,12 @@ export function PoolListHeader({
       </Desktop>
       <Mobile>
         <Flex alignItems="center" gap="1" cursor="pointer" onClick={() => handleClickSort('volume')}>
-          {t('common.volume')}/{t(`field.${timeBase}_apr`)}
+          {t('common.volume')}
           {sortKey === POOL_SORT_KEY.volume ? <SortUpDownArrow width="12px" height="12px" isDown={Boolean(order)} /> : null}
+        </Flex>
+        <Flex justifyContent="end" alignItems="center" gap="1" cursor="pointer" onClick={() => handleClickSort('apr')}>
+          {t(`field.${timeBase}_apr`)}
+          {sortKey === POOL_SORT_KEY.apr ? <SortUpDownArrow width="12px" height="12px" isDown={Boolean(order)} /> : null}
         </Flex>
       </Mobile>
       <Box />
