@@ -30,13 +30,13 @@ export function PoolListHeader({
       borderRadius="12px 12px 0 0"
       color={isLight ? colors.textPrimary : colors.textSecondary}
       fontWeight={500}
-      px={[4, 4]}
+      px={2}
       py={4}
       whiteSpace={'nowrap'}
       sx={poolListGrid}
       fontSize={['sm', 'md']}
     >
-      <Box pl={[0, 4 + 6]}>{t('liquidity.pool')}</Box>
+      <Box pl={[0, 8]}>{t('liquidity.pool')}</Box>
       <Desktop>
         <Flex
           justifyContent={'end'}

@@ -135,7 +135,7 @@ export default function PoolListItem({
   return (
     <>
       {styleType === 'list' ? (
-        <Box pl={[0, 6]} px={4} py={3} background={index % 2 ? colors.backgroundTransparent07 : ''} sx={poolListGrid} onClick={onPoolClick}>
+        <Box pl={[0]} px={2} py={3} background={index % 2 ? colors.backgroundTransparent07 : ''} sx={poolListGrid} onClick={onPoolClick}>
           <Flex align="center">
             <Desktop>
               <Center width={6} height={6}>
@@ -210,9 +210,11 @@ export default function PoolListItem({
                       {formatToRawLocaleStr(toPercentString(pool.feeRate * 100))}
                     </Tag>
 
-                    <Text fontSize={['sm', 'lg']} textAlign={'right'}>
-                      {formatCurrency(pool.tvl, { symbol: '$', decimalPlaces: 0 })}
-                    </Text>
+                    <Mobile>
+                      <Text fontSize={['sm', 'lg']} textAlign={'right'}>
+                        {formatCurrency(pool.tvl, { symbol: '$', decimalPlaces: 0 })}
+                      </Text>
+                    </Mobile>
 
                     {pool.isOpenBook && (
                       <Tooltip label="This pool shares liquidity to the OpenBook order-book">
@@ -276,7 +278,7 @@ export default function PoolListItem({
                 </Box>
               </Desktop>
               <Mobile>
-                <Flex justify={'center'}>
+                <Flex justify={'end'} pr={1}>
                   <Box>
                     <Text fontSize="sm" whiteSpace="nowrap" align="revert" color={colors.lightPurple}>
                       {formatToRawLocaleStr(toAPRPercent(timeData.apr))}
