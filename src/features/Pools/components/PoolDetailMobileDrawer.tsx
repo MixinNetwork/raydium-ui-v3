@@ -129,19 +129,19 @@ export default function PoolDetailMobileDrawer({
                   <Text fontSize="sm" color={colors.textSecondary}>
                     {t(`field.${timeBase}_volume`)}
                   </Text>
-                  <Text textAlign={'start'}>{volume}</Text>
+                  <Text textAlign={'start'}>${volume}</Text>
                 </Flex>
                 <Flex direction="column" gap={2}>
                   <Text fontSize="sm" color={colors.textSecondary}>
                     {t(`field.${timeBase}_fees`)}
                   </Text>
-                  <Text textAlign={'start'}>{fees}</Text>
+                  <Text textAlign={'start'}>${fees}</Text>
                 </Flex>
                 <Flex direction="column" gap={2}>
                   <Text fontSize="sm" color={colors.textSecondary}>
                     {t('common.tvl')}
                   </Text>
-                  <Text textAlign={'start'}>{tvl}</Text>
+                  <Text textAlign={'start'}>${tvl}</Text>
                 </Flex>
               </HStack>
             </ContentCard>
