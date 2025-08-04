@@ -553,7 +553,7 @@ export default function Pools() {
           flexGrow={1}
           flexDirection="column" 
           marginX={[revertAppLayoutPaddingX[0], 0]}
-          height={'100%'} 
+          minHeight={'100%'} 
           background={isMobile ? colors.backgroundLight : undefined}
         >
           {/* List Header */}
@@ -589,6 +589,7 @@ export default function Pools() {
                   getItemKey={(item) => item.id}
                   gap={currentLayoutStyle === 'grid' ? gridCardGap : undefined}
                   zIndex={1}
+                  pb={"88px"}
                 >
                   {renderPoolListItem}
                 </List>
