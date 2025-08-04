@@ -435,6 +435,7 @@ export default function Pools() {
                   selectedListValue={searchTokens}
                   onSelectedListChange={setSearchTokens}
                   hideAutoComplete={!!searchIdData}
+                  marginRight={1}
                 />
               )}
             </GridItem>
@@ -548,45 +549,53 @@ export default function Pools() {
           </Grid>
         </Box>
 
-        {/* List Header */}
-        {currentLayoutStyle === 'list' && (
-          <PoolListHeader order={order} timeBase={timeBase} sortKey={sortKey} handleClickSort={handleClickSort} />
-        )}
+        <Flex
+          flexGrow={1}
+          flexDirection="column" 
+          marginX={[revertAppLayoutPaddingX[0], 0]}
+          height={'100%'} 
+          background={isMobile ? colors.backgroundLight : undefined}
+        >
+          {/* List Header */}
+          {currentLayoutStyle === 'list' && (
+            <PoolListHeader order={order} timeBase={timeBase} sortKey={sortKey} handleClickSort={handleClickSort} />
+          )}
 
-        {/* List Content */}
-        {isNotFound ? (
-          <Box flexGrow="1" display="flex" flexDirection="column" justifyContent="center" alignItems="center">
-            <NotFound />
-            <Text mt="4" fontSize="sm" color={colors.textSecondary}>
-              {t('error.no_pools_found')}
-            </Text>
-          </Box>
-        ) : (
-          <>
-            {isLoading ? (
-              <PoolItemLoadingSkeleton isGrid={currentLayoutStyle === 'grid'} />
-            ) : (
-              <List
-                controllerRef={listControllerRef}
-                {...scrollBodyProps}
-                increaseRenderCount={showFarms ? 100 : 50}
-                initRenderCount={30}
-                reachBottomMargin={showFarms ? 200 : 150}
-                preventResetOnChange={search === prevSearch}
-                gridSlotCount={currentLayoutStyle === 'grid' && isMobile ? 1 : undefined}
-                gridSlotItemMinWidth={currentLayoutStyle === 'grid' ? gridCardSize : undefined}
-                haveLoadAll={isLoadEnded}
-                onLoadMore={loadMore}
-                items={sortedData}
-                getItemKey={(item) => item.id}
-                gap={currentLayoutStyle === 'grid' ? gridCardGap : undefined}
-                zIndex={1}
-              >
-                {renderPoolListItem}
-              </List>
-            )}
-          </>
-        )}
+          {/* List Content */}
+          {isNotFound ? (
+            <Box flexGrow="1" display="flex" flexDirection="column" justifyContent="center" alignItems="center">
+              <NotFound />
+              <Text mt="4" fontSize="sm" color={colors.textSecondary}>
+                {t('error.no_pools_found')}
+              </Text>
+            </Box>
+          ) : (
+            <>
+              {isLoading ? (
+                <PoolItemLoadingSkeleton isGrid={currentLayoutStyle === 'grid'} />
+              ) : (
+                <List
+                  controllerRef={listControllerRef}
+                  {...scrollBodyProps}
+                  increaseRenderCount={showFarms ? 100 : 50}
+                  initRenderCount={30}
+                  reachBottomMargin={showFarms ? 200 : 150}
+                  preventResetOnChange={search === prevSearch}
+                  gridSlotCount={currentLayoutStyle === 'grid' && isMobile ? 1 : undefined}
+                  gridSlotItemMinWidth={currentLayoutStyle === 'grid' ? gridCardSize : undefined}
+                  haveLoadAll={isLoadEnded}
+                  onLoadMore={loadMore}
+                  items={sortedData}
+                  getItemKey={(item) => item.id}
+                  gap={currentLayoutStyle === 'grid' ? gridCardGap : undefined}
+                  zIndex={1}
+                >
+                  {renderPoolListItem}
+                </List>
+              )}
+            </>
+          )}
+        </Flex>
 
         {/* Pool list item modal chart Modal */}
         <Desktop>

@@ -30,7 +30,7 @@ export function PoolListHeader({
       borderRadius="12px 12px 0 0"
       color={isLight ? colors.textPrimary : colors.textSecondary}
       fontWeight={500}
-      px={2}
+      px={'20px'}
       py={4}
       whiteSpace={'nowrap'}
       sx={poolListGrid}

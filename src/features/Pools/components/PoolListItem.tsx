@@ -135,10 +135,10 @@ export default function PoolListItem({
   return (
     <>
       {styleType === 'list' ? (
-        <Box pl={[0]} px={2} py={3} background={index % 2 ? colors.backgroundTransparent07 : ''} sx={poolListGrid} onClick={onPoolClick}>
+        <Box px={['20px', 4]} py={3} background={index % 2 ? colors.backgroundTransparent07 : ''} sx={poolListGrid} onClick={onPoolClick}>
           <Flex align="center">
             <Desktop>
-              <Center width={6} height={6}>
+              <Center width={6} height={6} marginRight={3}>
                 <StarIcon selected={isFavorite} onClick={onFavoriteClick} style={{ cursor: 'pointer', minWidth: '16px' }} />
               </Center>
             </Desktop>
