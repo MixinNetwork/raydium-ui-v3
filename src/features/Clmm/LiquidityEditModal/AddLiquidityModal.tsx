@@ -234,13 +234,22 @@ export default function AddLiquidityModal({
         const call = await client.fetchCall(requests[requests.length - 1].trace);
         if (call.state === 'done') {
           onClose()
+          toastSubject.next({
+            status: 'success',
+            title: `${t('transaction.title')} ${t('transaction.confirmed')}`,
+            description: call.hash,
+            isClosable: true,
+            duration: null
+          });
           clearInterval(timer);
         } else if (call.state === 'failed') {
           setIsSending(false);
           onClose();
           toastSubject.next({
             status: 'error',
-            description: 'transation failed'
+            title: `${t('transaction.title')} ${t('transaction.failed')}`,
+            isClosable: true,
+            duration: null
           });
           clearInterval(timer);
         }

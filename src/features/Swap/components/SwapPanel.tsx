@@ -301,14 +301,18 @@ export function SwapPanel({
           toastSubject.next({
             status: 'success',
             title: `${t('transaction.title')} ${t('transaction.confirmed')}`,
-            description: call.hash
+            description: call.hash,
+            isClosable: true,
+            duration: null
           });
           offSending();
           clearInterval(timer);
         } else if (call.state === 'failed') {
           toastSubject.next({
             status: 'error',
-            description: 'transation failed'
+            title: `${t('transaction.title')} ${t('transaction.failed')}`,
+            isClosable: true,
+            duration: null
           });
           offSending();
           clearInterval(timer);

@@ -441,7 +441,9 @@ export default function CreatePosition() {
           onClose();
           toastSubject.next({
             status: 'error',
-            description: 'transation failed'
+            title: `${t('transaction.title')} ${t('transaction.failed')}`,
+            isClosable: true,
+            duration: null
           });
           clearInterval(timer);
         }

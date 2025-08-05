@@ -158,7 +158,9 @@ export default function SelectPoolTokenAndFee({ completed, initState, show, isLo
         })
         toastSubject.next({
           status: 'success',
-          description: t("computer.deploy_success"),
+          title: t("computer.deploy_success"),
+          isClosable: true,
+          duration: null
         });
         setDeployingAssets([]);
         getComputerAssets();
@@ -193,8 +195,10 @@ export default function SelectPoolTokenAndFee({ completed, initState, show, isLo
       if (!tokenInfo1 || !tokenInfo2) {
         console.error('no token info', tokenInfo1, tokenInfo2)
         toastSubject.next({
-          description: 'Something went wrong!',
-          status: 'error'
+          title: 'Something went wrong!',
+          status: 'error',
+          isClosable: true,
+          duration: null
         })
         return
       }

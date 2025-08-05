@@ -212,7 +212,9 @@ export default function RemoveLiquidityModal({
           toastSubject.next({
             status: 'success',
             title: `${t('transaction.title')} ${t('transaction.confirmed')}`,
-            description: call.hash
+            description: call.hash,
+            isClosable: true,
+            duration: null
           });
           clearInterval(timer);
         } else if (call.state === 'failed') {
@@ -220,7 +222,9 @@ export default function RemoveLiquidityModal({
           onClose();
           toastSubject.next({
             status: 'error',
-            description: 'transation failed'
+            title: `${t('transaction.title')} ${t('transaction.failed')}`,
+            isClosable: true,
+            duration: null
           });
           clearInterval(timer);
         }

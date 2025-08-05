@@ -30,8 +30,10 @@ export default forwardRef(function ConnectedButton({ children, onClick, isDisabl
       handleClose();
       setSchema('');
       toastSubject.next({
-        description: t("computer.register_success"),
-        status: 'success'
+        title: t("computer.register_success"),
+        status: 'success',
+        isClosable: true,
+        duration: null
       })
       return;
     }
@@ -46,8 +48,10 @@ export default forwardRef(function ConnectedButton({ children, onClick, isDisabl
     if (!mix || !info) return;
     if (account) {
       toastSubject.next({
-        description: t("computer.registered"),
-        status: 'info'
+        title: t("computer.registered"),
+        status: 'info',
+        isClosable: true,
+        duration: null
       })
       return;
     }
