@@ -146,10 +146,8 @@ export const useSwapStore = createStore<SwapStore>(
           poolKeys: poolsResp.data,
         })
 
-        const amount = swapResponse.data.swapType === "BaseIn" 
-          ? swapResponse.data.inputAmount 
-          : swapResponse.data.outputAmount;
-        const token = swapResponse.data.swapType === "BaseIn" ? inputToken : outputToken;
+        const amount = swapResponse.data.inputAmount;
+        const token = inputToken;
         const tokenAmount = formatUnits(amount, token.decimals).toString();
         const address = token.address === WSOLMint.toString() ? SOLMint.toString() : token.address;
         const balance = balanceAddressMap[address];
