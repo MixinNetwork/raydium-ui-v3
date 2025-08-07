@@ -282,6 +282,10 @@ export function SwapPanel({
         mutate()
       }
     })
+    if (reqs.length === 0) {
+      offSending();
+      return;
+    }
     setRequests(reqs)
     openTraceModal(reqs[0]);
   }
