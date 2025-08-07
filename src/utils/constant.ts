@@ -1,4 +1,4 @@
-export const VERSION = 'prod';
+export const VERSION = 'prod' as 'staging' | 'prod';
 
 export const isStaging = () => {
   return VERSION !== 'prod';
