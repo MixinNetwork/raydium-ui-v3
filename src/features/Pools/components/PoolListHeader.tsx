@@ -17,7 +17,6 @@ export function PoolListHeader({
   handleClickSort: (key: string) => void
   timeBase: TimeBase
 }) {
-  console.log(sortKey, order, timeBase)
   const { t } = useTranslation()
   const { colorMode } = useColorMode()
   const isLight = colorMode === 'light'

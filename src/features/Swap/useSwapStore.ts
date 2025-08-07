@@ -1,4 +1,4 @@
-import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram } from '@solana/web3.js'
+import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram, AddressLookupTableAccount } from '@solana/web3.js'
 import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget, TxVersion, WSOLMint, SOLMint, closeAccountInstruction } from '@raydium-io/raydium-sdk-v2'
 import BN from 'bn.js'
 import BigNumber from 'bignumber.js';
@@ -78,6 +78,7 @@ export const useSwapStore = createStore<SwapStore>(
       }
       if (!raydium.owner) raydium.setOwner(publicKey);
 
+      const cc = initComputerClient();
       try {
         const getToken = useTokenStore.getState().getToken
         const [inputToken, outputToken] = [getToken(swapResponse.data.inputMint)!, getToken(swapResponse.data.outputMint)!]
@@ -96,38 +97,6 @@ export const useSwapStore = createStore<SwapStore>(
         const inputAccount =  getATAAddress(publicKey, new PublicKey(swapResponse.data.inputMint), new PublicKey(mintAProgram)).publicKey
         const outputAccount = getATAAddress(publicKey, new PublicKey(swapResponse.data.outputMint), new PublicKey(mintBProgram)).publicKey
         
-        // const isV0Tx = txVersion === TxVersion.V0
-        // const {
-        //   data,
-        //   success
-        // }: {
-        //   id: string
-        //   success: true
-        //   version: 'V1'
-        //   msg?: string
-        //   data?: { transaction: string }[]
-        // } = await axios.post(
-        //   `${urlConfigs.SWAP_HOST}${urlConfigs.SWAP_TX}${swapResponse.data.swapType === 'BaseIn' ? 'swap-base-in' : 'swap-base-out'}`,
-        //   {
-        //     wallet: publicKey.toBase58(),
-        //     computeUnitPriceMicroLamports: new Decimal(computeData?.microLamports || 0).toFixed(0),
-        //     swapResponse,
-        //     txVersion: isV0Tx ? 'V0' : 'LEGACY',
-        //     wrapSol: isInputSol,
-        //     unwrapSol,
-        //     inputAccount: isInputSol ? undefined : inputAccount?.toBase58(),
-        //     outputAccount: isOutputSol ? undefined : outputAccount?.toBase58()
-        //   }
-        // )
-        // if (!success) {
-        //   toastSubject.next({
-        //     title: 'Make Transaction Error',
-        //     description: 'Please try again, or contact us on discord',
-        //     status: 'error'
-        //   })
-        //   onCloseToast && onCloseToast()
-        //   return [];
-        // }
         const ins = swapResponse.data.swapType === "BaseIn" ? swapBaseInAutoAccount({
           programId: ALL_PROGRAM_ID.Router,
           wallet: publicKey,
@@ -156,7 +125,6 @@ export const useSwapStore = createStore<SwapStore>(
         const rent = await raydium.connection.getMinimumBalanceForRentExemption(165)
         const rents = new Decimal(rent).mul(swapResponse.data.routePlan.length * 2);
         const solAmount = formatUnits(rents.toString(), SOL_DECIMAL).toString()
-        const cc = initComputerClient();
         const fee = await cc.getFeeOnXin(solAmount)
 
         // const swapTransactions = data || []
@@ -189,18 +157,19 @@ export const useSwapStore = createStore<SwapStore>(
         }
         instructions.push(...computeIns)
         
+        const alts = await cc.getAtls();
+        const rpcAccounts = await Promise.all(alts.map(a => connection.getAddressLookupTable(new PublicKey(a))));
+        const altsAccounts = rpcAccounts.map(a => a.value).filter(a => a != null) as AddressLookupTableAccount[];
         const messageV0 = new TransactionMessage({
           payerKey: new PublicKey(info.payer),
           recentBlockhash: nonce.nonce_hash,
           instructions,
-        }).compileToV0Message();
+        }).compileToV0Message(altsAccounts);
         const tx = new VersionedTransaction(messageV0);
+        
         const txBuf = Buffer.from(tx.serialize());
         const valid = checkSystemCallSize(txBuf);
-        if (!valid) {
-          toastSubject.next({ status: "error", description: "Transaction too long", duration: null });
-          return [];
-        }
+        if (!valid) throw new Error('Transaction too large');
 
         const trace = uniqueConversationID(txBuf.toString("hex"), "system call");
         const extra = buildComputerExtra(
@@ -243,8 +212,14 @@ export const useSwapStore = createStore<SwapStore>(
       } catch (e: any) {
         console.error(e)
         txProps.onError?.()
-        if (e.message !== 'tx failed')
-          toastSubject.next({ txError: typeof e === 'string' ? new Error(e) : e, title: 'Swap', description: 'Send transaction failed' })
+        if (e.message !== 'tx failed') {
+          const err =  typeof e === 'string' 
+            ? new Error(e)
+            : e.message.includes('Transaction too large') 
+              ? new Error('Transaction too large, cannot swap directly')
+              : e.message;
+          toastSubject.next({ txError: err, title: 'Swap', description: 'Send transaction failed', duration: null })
+        } 
       } finally {
         txProps.onFinally?.()
       }

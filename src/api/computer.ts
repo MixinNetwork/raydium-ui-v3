@@ -36,5 +36,6 @@ export const initComputerClient = (responseCallback?: (e: any) => void) => {
     deployAssets: (assets: string[]) => ins.post('/deployed_assets', { assets }),
     getNonce: (mix: string): Promise<ComputerNonceResponse> => ins.post('/nonce_accounts', { mix }),
     getFeeOnXin: (amount: string): Promise<ComputerFeeResponse> => ins.post('/fee', { sol_amount: amount }),
+    getAtls: (): Promise<string[]> => ins.get('/address_lookup_tables'),
   };
 };

@@ -146,12 +146,6 @@ export function SwapPanel({
     refreshInterval: isSending || isHightRiskOpen ? 3 * 60 * 1000 : 1000 * 30
   })
 
-  const routes = response?.data?.routePlan.length || 0;
-  let routesError = undefined;
-  if (routes > 1) {
-    routesError = 'Cannot Swap Directly'
-  }
-
   const onPriceUpdatedConfirm = useEvent(() => {
     setNeedPriceUpdatedAlert(false)
     sendingResult.current = response as ApiSwapV1OutSuccess
@@ -254,7 +248,7 @@ export function SwapPanel({
       : new Decimal(0)
   const balanceNotEnough = balanceAmount.lt(inputAmount || 0) ? t('error.balance_not_enough') : undefined
   // const isSolFeeNotEnough = inputAmount && isSolWSol(inputMint || '') && balanceAmount.sub(inputAmount || 0).lt(DEFAULT_SOL_RESERVER)
-  const swapError = routesError || (error && i18n.exists(`swap.error_${error}`) ? t(`swap.error_${error}`) : error) || balanceNotEnough
+  const swapError = error && i18n.exists(`swap.error_${error}`) ? t(`swap.error_${error}`) : error || balanceNotEnough
   const isPoolNotOpenError = !!swapError && !!openTime
 
   const handleHighRiskConfirm = useEvent(() => {
