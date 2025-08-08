@@ -338,6 +338,7 @@ export const useClmmStore = createStore<ClmmState>(
         const cc = initComputerClient()
         const computeBudgetConfig = await getComputeBudgetConfig()
         const nonce = await cc.getNonce(getUserMix())
+        const alts = await cc.getAtls();
 
         const owner = new PublicKey(publicKey)
         const txBuilder = new TxBuilder({
@@ -353,6 +354,7 @@ export const useClmmStore = createStore<ClmmState>(
         txBuilder.addInstruction({
           instructions: [nonceIns],
           instructionTypes: ["AdvanceNonceAccount"],
+          lookupTableAddress: alts
         })
 
         const params = {
@@ -396,7 +398,14 @@ export const useClmmStore = createStore<ClmmState>(
             checkCreateATAOwner: params.checkCreateATAOwner,
           });
         if (_ownerTokenAccountA) ownerTokenAccountA = _ownerTokenAccountA;
-        if (mintAUseSOLBalance || bnAmountA.isZero()) txBuilder.addInstruction(_tokenAccountAInstruction || {});
+        if (mintAUseSOLBalance || bnAmountA.isZero()) {
+          const ins = _tokenAccountAInstruction
+            ? {
+              ..._tokenAccountAInstruction,
+              lookupTableAddress: alts
+            } : {};
+          txBuilder.addInstruction(ins); 
+        }
     
         const { account: _ownerTokenAccountB, instructionParams: _tokenAccountBInstruction } =
           await raydium.account.getOrCreateTokenAccount({
@@ -414,7 +423,14 @@ export const useClmmStore = createStore<ClmmState>(
             checkCreateATAOwner: params.checkCreateATAOwner,
           });
         if (_ownerTokenAccountB) ownerTokenAccountB = _ownerTokenAccountB;
-        if (mintBUseSOLBalance || bnAmountB.isZero()) txBuilder.addInstruction(_tokenAccountBInstruction || {});
+        if (mintBUseSOLBalance || bnAmountB.isZero()) {
+          const ins = _tokenAccountBInstruction
+            ? {
+              ..._tokenAccountBInstruction,
+              lookupTableAddress: alts
+            } : {};
+          txBuilder.addInstruction(ins); 
+        }
     
         if (!ownerTokenAccountA || !ownerTokenAccountB)
           throw new Error(`cannot found target token accounts tokenAccounts: ${poolInfo.mintA.address} ${ownerTokenAccountA?.toBase58()}, ${poolInfo.mintB.address} ${ownerTokenAccountB?.toBase58()}`);
@@ -440,7 +456,10 @@ export const useClmmStore = createStore<ClmmState>(
           nft2022: params.nft2022,
         });
     
-        txBuilder.addInstruction(insInfo);
+        txBuilder.addInstruction({
+          ...insInfo,
+          lookupTableAddress: alts
+        });
         
         if (computeBudgetConfig) {
           const ins = addComputeBudget(computeBudgetConfig);
