@@ -651,6 +651,7 @@
     "confirmed": "Confirmed",
     "send_failed": "Send {{title}} Transaction Failed",
     "transaction_initiating": "Transaction initiating",
+    "transaction_processing": "Transaction processing",
     "multisig_wallet": "Multisig Wallet",
     "multisig_wallet_initiation": "Transaction initiation",
     "multisig_wallet_initiated": "Transaction initiated.",

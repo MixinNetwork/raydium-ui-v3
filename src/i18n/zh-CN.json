@@ -451,7 +451,9 @@
     "processed": "已处理",
     "failed": "失败",
     "view_detail": "查看交易详情",
-    "confirmed": "已确认"
+    "confirmed": "已确认",
+    "transaction_initiating": "交易初始化中",
+    "transaction_processing": "交易处理中"
   },
   "edit_farm": {
     "button": "编辑",

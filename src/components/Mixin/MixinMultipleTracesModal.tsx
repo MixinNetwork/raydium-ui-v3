@@ -4,6 +4,7 @@ import QrCode from '../Qrcode';
 import { useEffect, useState } from 'react';
 import { useAppStore } from '@/store';
 import { ComputerSystemCallRequest } from '@/types/computer';
+import { toastSubject } from '@/hooks/toast/useGlobalToast';
 
 interface MixinModalProps {
   requests: ComputerSystemCallRequest[];
@@ -37,6 +38,12 @@ export function MixinMultipleTracesModal(props: MixinModalProps) {
         if (index === props.requests.length - 1) {
           clearInterval(timer);
           props.onClose();
+          toastSubject.next({
+            status: 'success',
+            title: t('transaction.transaction_processing'),
+            isClosable: true,
+            duration: null
+          });
         } else setIndex((i) => i + 1);
       } catch(e) {}
     }, 1000 * 5);
@@ -50,11 +57,8 @@ export function MixinMultipleTracesModal(props: MixinModalProps) {
       <ModalContent minW={['auto', '320px']}>
         <ModalBody>
           <Flex direction={"column"} alignItems={"center"}>        
-            <Text mb={4} align={"center"}>{ t('computer.traces', { index: ordinal, total: props.requests.length }) }</Text>
             <Box width={256} height={256} borderRadius={"xl"} overflow={"hidden"}>
-                {
-                  <QrCode value={props.requests[index].value}/>
-                }
+                <QrCode value={props.requests[index].value}/>
             </Box>
             <Text mt={4} align={"center"}>
               {t("computer.scan")}
