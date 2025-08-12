@@ -2,7 +2,7 @@ import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram, Ad
 import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget, TxVersion, WSOLMint, SOLMint, closeAccountInstruction } from '@raydium-io/raydium-sdk-v2'
 import BN from 'bn.js'
 import BigNumber from 'bignumber.js';
-import { createStore, useAppStore, useTokenStore } from '@/store'
+import { createStore, useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
 import { txStatusSubject } from '@/hooks/toast/useTxStatus'
 import { ApiSwapV1OutSuccess } from './type'
@@ -16,7 +16,7 @@ import { initComputerClient } from '@/api/computer'
 import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, uniqueConversationID, checkSystemCallSize, OperationTypeUserDeposit, userIdToBytes } from '@mixin.dev/mixin-node-sdk'
 import { buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema } from '@/utils/mixin'
 import { OperationTypeSystemCall, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
-import { ComputerSystemCallRequest } from '@/types/computer'
+import { ComputerFeeResponse, ComputerSystemCallRequest } from '@/types/computer'
 import { add } from '@/utils/number'
 import { getDefaultToastData, handleMultiTxToast, transformProcessData } from '@/hooks/toast/multiToastUtil';
 import { handleMultiTxRetry } from '@/hooks/toast/retryTx';
@@ -70,6 +70,7 @@ export const useSwapStore = createStore<SwapStore>(
 
     swapTokenAct: async ({ swapResponse, wrapSol, unwrapSol = false, onCloseToast, ...txProps }) => {
       const { publicKey, raydium, connection, urlConfigs, account, info, balanceAddressMap, getUserMix, getComputerRecipient } = useAppStore.getState()
+      const { tokenAccounts } = useTokenAccountStore.getState();
       const computer = getComputerRecipient()
       if (!raydium || !connection || !info || !computer || !account || !publicKey) {
         console.error('no connection')
@@ -122,10 +123,21 @@ export const useSwapStore = createStore<SwapStore>(
         const balance = balanceAddressMap[address];
         if (!balance) throw new Error('invalid input')
 
-        const rent = await raydium.connection.getMinimumBalanceForRentExemption(165)
-        const rents = new Decimal(rent).mul(swapResponse.data.routePlan.length * 2);
-        const solAmount = formatUnits(rents.toString(), SOL_DECIMAL).toString()
-        const fee = await cc.getFeeOnXin(solAmount)
+        let ataCount = 0;
+        [inputAccount, outputAccount].forEach(a => {
+          const ataExists = !!tokenAccounts.find((acc) => acc.publicKey && acc.publicKey.equals(a));
+          if (!ataExists) ataCount+= 1;
+        });
+        let fee: ComputerFeeResponse | undefined;
+        if (ataCount > 0) {
+          const rent = await raydium.connection.getMinimumBalanceForRentExemption(165)
+          const rents = new Decimal(rent).mul(swapResponse.data.routePlan.length * ataCount);
+          const solAmount = formatUnits(rents.toString(), SOL_DECIMAL).toString();
+          fee = await cc.getFeeOnXin(solAmount);
+        }
+        const operationFee = fee 
+          ? add(info.params.operation.price, fee.xin_amount).toFixed(8, BigNumber.ROUND_CEIL)
+          : info.params.operation.price;
 
         // const swapTransactions = data || []
         // if (swapTransactions.length !== 1) throw new Error('invalid swap transaction'); //
@@ -175,7 +187,7 @@ export const useSwapStore = createStore<SwapStore>(
         const extra = buildComputerExtra(
           info.members.app_id, 
           OperationTypeSystemCall, 
-          buildSystemCallInvoiceExtra(account.id, trace, false, fee.fee_id)
+          buildSystemCallInvoiceExtra(account.id, trace, false, fee?.fee_id)
         )
 
         const referenceExtra = Buffer.from(
@@ -196,7 +208,7 @@ export const useSwapStore = createStore<SwapStore>(
         attachInvoiceEntry(invoice, {
           trace_id: trace,
           asset_id: XIN_ASSET_ID,
-          amount: add(info.params.operation.price, fee.xin_amount).toFixed(8, BigNumber.ROUND_CEIL),
+          amount: operationFee,
           extra: Buffer.from(extra),
           index_references: [0, 1],
           hash_references: []
