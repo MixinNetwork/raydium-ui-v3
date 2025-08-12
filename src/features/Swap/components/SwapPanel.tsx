@@ -410,53 +410,11 @@ export function SwapPanel({
         </Collapse>
       }
 
-      <Collapse in={needPriceUpdatedAlert}>
+      <Collapse in={needPriceUpdatedAlert && !isSending}>
         <Box pb={[4, 5]}>
           <SwapPriceUpdatedAlert onConfirm={onPriceUpdatedConfirm} />
         </Box>
       </Collapse>
-      {/* {isSolFeeNotEnough ? (
-        <Flex
-          rounded="xl"
-          p="2"
-          mt="-2"
-          mb="3"
-          fontSize="sm"
-          bg={'rgba(255, 78, 163,0.1)'}
-          color={colors.semanticError}
-          alignItems="start"
-          justifyContent="center"
-        >
-          <WarningIcon style={{ marginTop: '2px', marginRight: '4px' }} stroke={colors.semanticError} />
-          <Text>{t('swap.error_sol_fee_not_insufficient', { amount: formatToRawLocaleStr(DEFAULT_SOL_RESERVER) })}</Text>
-        </Flex>
-      ) : null} */}
-      {/* {wsolBalance.isZero ? null : (
-        <Flex
-          rounded="md"
-          mt="-2"
-          mb="3"
-          fontSize="xs"
-          fontWeight={400}
-          bg={colors.backgroundTransparent07}
-          alignItems="center"
-          px="4"
-          py="2"
-          gap="1"
-          color={colors.textSecondary}
-        >
-          <CircleInfo />
-          <Trans
-            i18nKey={'swap.unwrap_wsol_info'}
-            values={{
-              amount: wsolBalance.text
-            }}
-            components={{
-              sub: isUnWrapping ? <Progress /> : <Text cursor="pointer" color={colors.textLink} onClick={handleUnwrap} />
-            }}
-          />
-        </Flex>
-      )} */}
       {inputFeeConfig || outputFeeConfig ? (
         <Flex mt="-1" mb="4">
           {inputFeeConfig && tokenInput ? (
