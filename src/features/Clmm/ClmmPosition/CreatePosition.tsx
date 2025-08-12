@@ -783,6 +783,7 @@ export default function CreatePosition() {
           tokenPrices={tokenPrices}
           tokenAmount={baseIn ? tokenAmountRef.current : [tokenAmountRef.current[1], tokenAmountRef.current[0]]}
           priceRange={[tickPriceRef.current.priceLower!, tickPriceRef.current.priceUpper!]}
+          processing={isSending && requests.length > 0 && !isTraceModalOpen}
         />
       ) : null}
       <DepositedNFTModal nftAddress={nftAddress} isOpen={isNFTOpen} onClose={onNFTClose} />

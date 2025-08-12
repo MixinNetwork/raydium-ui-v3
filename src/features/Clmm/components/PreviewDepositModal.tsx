@@ -36,6 +36,7 @@ interface Props {
   tokenAmount: [string, string]
   priceRange: [string, string]
   tokenPrices: Record<string, { value: number }>
+  processing: boolean;
   isCreatePool?: boolean
 }
 

@@ -387,6 +387,7 @@ export default function CreateClmmPool() {
           onClose={onClose}
           tokenAmount={[currentCreateInfo.current.amount1 || '0', currentCreateInfo.current.amount2 || '1']}
           priceRange={[currentCreateInfo.current.priceLower || '2', currentCreateInfo.current.priceUpper || '3']}
+          processing={isTxSending && requests.length > 0 && !isTraceModalOpen}
         />
       ) : null}
       {currentCreateInfo.current.isFullRange ? (

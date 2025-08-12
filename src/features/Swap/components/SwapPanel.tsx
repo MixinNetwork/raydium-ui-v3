@@ -459,7 +459,17 @@ export function SwapPanel({
       <ConnectedButton
         isDisabled={new Decimal(amountIn || 0).isZero() || !!swapError || needPriceUpdatedAlert || swapDisabled}
         isLoading={isComputing || isSending}
-        loadingText={<div>{isSending ? t('transaction.transaction_initiating') : isComputing ? t('swap.computing') : ''}</div>}
+        loadingText={
+          <div>
+            {
+              isSending 
+                ? requests.length > 0 && !isTraceModalOpen 
+                    ? t('transaction.transaction_processing')
+                    : t('transaction.transaction_initiating') 
+                : isComputing ? t('swap.computing') : ''
+            }
+          </div>
+        }
         onClick={isHighRiskTx ? onHightRiskOpen : handleClickSwap}
       >
         <Text>
