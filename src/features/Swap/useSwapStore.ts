@@ -1,5 +1,5 @@
 import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram, AddressLookupTableAccount } from '@solana/web3.js'
-import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget, TxVersion, WSOLMint, SOLMint, closeAccountInstruction } from '@raydium-io/raydium-sdk-v2'
+import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget, TxVersion, WSOLMint, SOLMint, closeAccountInstruction, swapBaseOutAutoAccount } from '@raydium-io/raydium-sdk-v2'
 import BN from 'bn.js'
 import BigNumber from 'bignumber.js';
 import { createStore, useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
@@ -97,7 +97,7 @@ export const useSwapStore = createStore<SwapStore>(
         ]
         const inputAccount =  getATAAddress(publicKey, new PublicKey(swapResponse.data.inputMint), new PublicKey(mintAProgram)).publicKey
         const outputAccount = getATAAddress(publicKey, new PublicKey(swapResponse.data.outputMint), new PublicKey(mintBProgram)).publicKey
-        
+
         const ins = swapResponse.data.swapType === "BaseIn" ? swapBaseInAutoAccount({
           programId: ALL_PROGRAM_ID.Router,
           wallet: publicKey,
@@ -106,10 +106,9 @@ export const useSwapStore = createStore<SwapStore>(
           outputAccount,
           routeInfo: swapResponse,
           poolKeys: poolsResp.data,
-        }) : swapBaseInAutoAccount({
+        }) : swapBaseOutAutoAccount({
           programId: ALL_PROGRAM_ID.Router,
           wallet: publicKey,
-          amount: new BN(swapResponse.data.outputAmount),
           inputAccount,
           outputAccount,
           routeInfo: swapResponse,
