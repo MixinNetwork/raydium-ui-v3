@@ -242,6 +242,7 @@ export default function AddLiquidityModal({
             duration: null
           });
           clearInterval(timer);
+          setRequests([]);
         } else if (call.state === 'failed') {
           setIsSending(false);
           onClose();
@@ -252,6 +253,7 @@ export default function AddLiquidityModal({
             duration: null
           });
           clearInterval(timer);
+          setRequests([]);
         }
       } catch {
         // console.log(err)

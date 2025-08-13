@@ -304,6 +304,7 @@ export function SwapPanel({
             duration: null
           });
           offSending();
+          setRequests([]);
           clearInterval(timer);
         } else if (call.state === 'failed') {
           toastSubject.next({
@@ -313,6 +314,7 @@ export function SwapPanel({
             duration: null
           });
           offSending();
+          setRequests([]);
           clearInterval(timer);
         }
       } catch {

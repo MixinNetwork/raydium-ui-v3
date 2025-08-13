@@ -224,6 +224,7 @@ export default function CreateClmmPool() {
         if (call.state === 'done') {
           onOpenSuccessModal();
           clearInterval(timer);
+          setRequests([]);
         } else if (call.state === 'failed') {
           setIsTxSending(false);
           onClose();
@@ -234,6 +235,7 @@ export default function CreateClmmPool() {
             duration: null
           });
           clearInterval(timer);
+          setRequests([]);
         }
       } catch {
         // console.log(err)
