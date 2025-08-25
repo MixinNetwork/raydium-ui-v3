@@ -21,7 +21,7 @@ const DynamicContent = dynamic(() => import('@/components/Content'))
 const DynamicAppNavLayout = dynamic(() => import('@/components/AppLayout/AppNavLayout'), { ssr: false })
 
 const CONTENT_ONLY_PATH = ['/', '404', '/moonpay']
-const OVERFLOW_HIDDEN_PATH = ['/liquidity-pools']
+const OVERFLOW_HIDDEN_PATH = [] as string[];
 
 Decimal.set({ precision: 1e3 })
 

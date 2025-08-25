@@ -146,7 +146,6 @@ function List<T>(
             : undefined
         }
         justifyContent={gridSlotCount || gridSlotItemMinWidth || gridSlotItemWidth ? 'center' : undefined}
-        overflow="overlay" // overlay is prettier
         {...props}
       >
         {allListItems}

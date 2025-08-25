@@ -589,7 +589,7 @@ export default function Pools() {
                   getItemKey={(item) => item.id}
                   gap={currentLayoutStyle === 'grid' ? gridCardGap : undefined}
                   zIndex={1}
-                  pb={"88px"}
+                  pb={10}
                 >
                   {renderPoolListItem}
                 </List>
