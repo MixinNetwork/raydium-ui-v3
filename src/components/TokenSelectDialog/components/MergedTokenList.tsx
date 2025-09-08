@@ -269,7 +269,7 @@ export default forwardRef<
             </Button>
           </Box>
         ) : (
-          <Box overflow="hidden" mx="-12px">
+          <Box overflowY={'auto'} mx="-12px">
             <List height="100%" onLoadMore={showMoreData} preventResetOnChange items={displayList} getItemKey={(token) => token.address}>
               {renderTokenItem}
             </List>

@@ -124,7 +124,7 @@ export default forwardRef<
             {t('common.balance')}/{t('common.address')}
           </Heading>
         </Flex>
-        <Box overflow="hidden" mx="-12px">
+        <Box overflowY={'auto'} mx="-12px">
           <List height="100%" preventResetOnChange items={displayList} getItemKey={(token: UserAssetBalance) => token.asset_id}>
             {renderTokenItem}
           </List>
