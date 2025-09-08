@@ -264,8 +264,8 @@ export default forwardRef<
             </Button>
           </Box>
         ) : (
-          <Box overflowY={'auto'} mx="-12px">
-            <List onLoadMore={showMoreData} preventResetOnChange items={displayList} getItemKey={(token) => token.address}>
+          <Box overflow={"hidden"} mx="-12px">
+            <List overflow={"overlay"} height={"100%"} onLoadMore={showMoreData} preventResetOnChange items={displayList} getItemKey={(token) => token.address}>
               {renderTokenItem}
             </List>
           </Box>
