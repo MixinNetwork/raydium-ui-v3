@@ -70,14 +70,15 @@ export default forwardRef<
   }, [filteredList.length])
 
   useEffect(() => {
-    const compareFn = (_a: number, _b: number, items: { itemA: TokenInfo; itemB: TokenInfo }) => {
-      const accountA = tokenAccountMap.get(items.itemA.address)
-      const accountB = tokenAccountMap.get(items.itemB.address)
-      const amountA = new Decimal(accountA?.[0].amount.toString() || Number.MIN_VALUE).div(10 ** items.itemA.decimals)
-      const amountB = new Decimal(accountB?.[0].amount.toString() || Number.MIN_VALUE).div(10 ** items.itemB.decimals)
-
-      const usdA = amountA.mul(tokenPrice[items.itemA.address]?.value || 0)
-      const usdB = amountB.mul(tokenPrice[items.itemB.address]?.value || 0)
+    const compareFn = (itemA: TokenInfo, itemB: TokenInfo) => {
+      const ta = mixinTokenAccountMap[itemA.address]
+      const tb = mixinTokenAccountMap[itemB.address]
+      const amountA = new Decimal(ta.total_amount);
+      const amountB = new Decimal(tb.total_amount);
+      const priceA = new Decimal(ta.asset.price_usd);
+      const priceB = new Decimal(tb.asset.price_usd);
+      const usdA = amountA.mul(priceA || 0)
+      const usdB = amountB.mul(priceB || 0)
 
       if (usdB.gt(usdA)) return 1
       if (usdB.eq(usdA)) {
@@ -134,21 +135,17 @@ export default forwardRef<
           priority: 90,
         }
       })
-    const sortedTokenList = sortItems(list, {
-      sortRules: [
-        // { value: (i) => (i.address === SOLMint || i.address === RAYMint ? i.address : null) },
-        { value: (i) => (i.tags.includes('unknown') ? null : i.symbol.length), compareFn }
-      ]
-    })
-    .map(info => {
-      const balance = mixinTokenAccountMap[info.address];
-      return {
-        info,
-        balance
-      }
-    }) as Token[]
+    const sortedTokenList = list
+      .sort((a, b) => compareFn(a, b))
+      .map(info => {
+        const balance = mixinTokenAccountMap[info.address];
+        return {
+          info,
+          balance
+        }
+      }) as Token[]
     const filteredList = search ? filterFilteredMixinTokenFn(sortedTokenList, { searchStr: search }) : sortedTokenList
-    setDisplayList(filteredList.slice(0, perPage))
+    setDisplayList(filteredList)
     setFilteredList(filteredList)
   }, [user, search, tokenList, tokenAccountMap, orgTokenMap, tokenPrice])
 
@@ -282,7 +279,7 @@ export default forwardRef<
           </Box>
         ) : (
           <Box overflowY={'auto'} mx="-12px">
-            <List height="100%" onLoadMore={showMoreData} preventResetOnChange items={displayList} getItemKey={(token) => token.info.address}>
+            <List onLoadMore={showMoreData} preventResetOnChange items={displayList} getItemKey={(token) => token.info.address}>
               {renderTokenItem}
             </List>
           </Box>
@@ -351,58 +348,6 @@ function FilteredMixinTokenRowItem({
           </Box>
         </Box>
       </Flex>
-      {/* <Grid
-        gridTemplate={`
-          "avatar symbol" auto
-          "avatar name  " auto / auto 1fr
-        `}
-        columnGap={[1, 2]}
-        alignItems="center"
-        cursor="pointer"
-      >
-        <GridItem gridArea="avatar">
-          <TokenAvatar token={token} />
-        </GridItem>
-        <GridItem gridArea="symbol">
-          <Text color={colors.textSecondary}>{token.symbol}</Text>
-        </GridItem>
-        <GridItem gridArea="name">
-          <Text
-            color={colors.textTertiary}
-            maxWidth={'90%'} // handle token is too long
-            overflow={'hidden'}
-            whiteSpace={'nowrap'}
-            textOverflow={'ellipsis'}
-            fontSize="xs"
-          >
-            {token.name}
-          </Text>
-        </GridItem>
-      </Grid>
-
-      <Grid
-        gridTemplate={`
-          "balance" auto
-          "address" auto / auto 
-        `}
-        columnGap={[2, 4]}
-        alignItems="center"
-      >
-        <GridItem gridArea="balance">
-          <Text color={colors.textSecondary} textAlign="right">
-            {balance()}
-          </Text>
-        </GridItem>
-        <GridItem gridArea="address">
-          <AddressChip
-            onClick={(ev) => ev.stopPropagation()}
-            color={colors.textTertiary}
-            canExternalLink
-            fontSize="xs"
-            address={token.address}
-          />
-        </GridItem>
-      </Grid> */}
     </Flex>
   )
 }

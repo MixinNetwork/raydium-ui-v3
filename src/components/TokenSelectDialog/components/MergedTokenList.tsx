@@ -76,14 +76,14 @@ export default forwardRef<
   }, [filteredList.length])
 
   useEffect(() => {
-    const compareFn = (_a: number, _b: number, items: { itemA: TokenInfo; itemB: TokenInfo }) => {
-      const accountA = tokenAccountMap.get(items.itemA.address)
-      const accountB = tokenAccountMap.get(items.itemB.address)
-      const amountA = new Decimal(accountA?.[0].amount.toString() || Number.MIN_VALUE).div(10 ** items.itemA.decimals)
-      const amountB = new Decimal(accountB?.[0].amount.toString() || Number.MIN_VALUE).div(10 ** items.itemB.decimals)
+    const compareFn = (itemA: TokenInfo, itemB: TokenInfo) => {
+      const accountA = tokenAccountMap.get(itemA.address)
+      const accountB = tokenAccountMap.get(itemB.address)
+      const amountA = new Decimal(accountA?.[0].amount.toString() || Number.MIN_VALUE).div(10 ** itemA.decimals)
+      const amountB = new Decimal(accountB?.[0].amount.toString() || Number.MIN_VALUE).div(10 ** itemB.decimals)
 
-      const usdA = amountA.mul(tokenPrice[items.itemA.address]?.value || 0)
-      const usdB = amountB.mul(tokenPrice[items.itemB.address]?.value || 0)
+      const usdA = amountA.mul(tokenPrice[itemA.address]?.value || 0)
+      const usdB = amountB.mul(tokenPrice[itemB.address]?.value || 0)
 
       if (usdB.gt(usdA)) return 1
       if (usdB.eq(usdA)) {
@@ -107,12 +107,7 @@ export default forwardRef<
           priority: 90,
         }
       })
-    const sortedTokenList = sortItems(tokenList, {
-      sortRules: [
-        // { value: (i) => (i.address === SOLMint || i.address === RAYMint ? i.address : null) },
-        { value: (i) => (i.tags.includes('unknown') ? null : i.symbol.length), compareFn }
-      ]
-    })
+    const sortedTokenList = tokenList.sort((a, b) => compareFn(a, b));
     const l = [...computerTokenList, ...sortedTokenList];
     const filteredList = search ? filterTokenFn(l, { searchStr: search }) : l
     setDisplayList(filteredList.slice(0, perPage))
@@ -270,7 +265,7 @@ export default forwardRef<
           </Box>
         ) : (
           <Box overflowY={'auto'} mx="-12px">
-            <List height="100%" onLoadMore={showMoreData} preventResetOnChange items={displayList} getItemKey={(token) => token.address}>
+            <List onLoadMore={showMoreData} preventResetOnChange items={displayList} getItemKey={(token) => token.address}>
               {renderTokenItem}
             </List>
           </Box>

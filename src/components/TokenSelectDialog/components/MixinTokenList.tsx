@@ -48,9 +48,9 @@ export default forwardRef<
   }, [filteredList.length])
 
   useEffect(() => {
-    const compareFn = (_a: number, _b: number, items: { itemA: UserAssetBalance; itemB: UserAssetBalance }) => {
-      const accountA = tokenAccountMap[items.itemA.asset_id]
-      const accountB = tokenAccountMap[items.itemB.asset_id]
+    const compareFn = (itemA: UserAssetBalance, itemB: UserAssetBalance) => {
+      const accountA = tokenAccountMap[itemA.asset_id]
+      const accountB = tokenAccountMap[itemB.asset_id]
       const usdA = accountA.asset ? mul(accountA.total_amount, accountA.asset.price_usd) : undefined
       const usdB = accountB.asset ? mul(accountB.total_amount, accountB.asset.price_usd) : undefined
 
@@ -61,12 +61,7 @@ export default forwardRef<
       else flag = usdA.isGreaterThan(usdB) ? 1 : usdA.isEqualTo(usdB) ? 0 : -1;
       return -flag;
     }
-    const sortedTokenList = sortItems(Object.values(tokenAccountMap), {
-      sortRules: [
-        // { value: (i) => (i.address === SOLMint || i.address === RAYMint ? i.address : null) },
-        { value: (i) => (i.asset ? i.asset.symbol.length: null), compareFn }
-      ]
-    })
+    const sortedTokenList = Object.values(tokenAccountMap).sort((a, b) => compareFn(a, b))
     const filteredList = search ? filterMixinTokenFn(sortedTokenList, { searchStr: search }) : sortedTokenList
     setDisplayList(filteredList)
     setFilteredList(filteredList)
@@ -125,7 +120,7 @@ export default forwardRef<
           </Heading>
         </Flex>
         <Box overflowY={'auto'} mx="-12px">
-          <List height="100%" preventResetOnChange items={displayList} getItemKey={(token: UserAssetBalance) => token.asset_id}>
+          <List preventResetOnChange items={displayList} getItemKey={(token: UserAssetBalance) => token.asset_id}>
             {renderTokenItem}
           </List>
         </Box>
