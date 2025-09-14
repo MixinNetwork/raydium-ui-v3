@@ -222,7 +222,11 @@ const clmmInitState = {
   slippage: 0.005
 }
 
-const client = MixinApi();
+const client = MixinApi({ 
+  requestConfig: {
+    timeout: 1000 * 60,
+  }
+});
 
 export const useClmmStore = createStore<ClmmState>(
   (set, get) => ({

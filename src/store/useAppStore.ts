@@ -15,7 +15,7 @@ import {
 } from '@raydium-io/raydium-sdk-v2'
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base'
 import { Wallet } from '@solana/wallet-adapter-react'
-import { buildMixAddress, MixinApi, SafeUtxoOutput, UserResponse, type Keystore } from '@mixin.dev/mixin-node-sdk';
+import { buildMixAddress, MixinApi, RequestConfig, SafeUtxoOutput, UserResponse, type Keystore } from '@mixin.dev/mixin-node-sdk';
 import createStore from './createStore'
 import { blackJupMintSet, useTokenStore } from './useTokenStore'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
@@ -207,22 +207,25 @@ let epochInfoCache = {
   loading: false
 }
 
+const defaultHttpConfig: RequestConfig = {
+  timeout: 1000 * 60
+}
 export const useAppStore = createStore<AppState>(
   (set, get) => ({
     ...appInitState,
     setKeystore: (keystore: Keystore) => {
       saveKeystore(keystore);
       set({ keystore })
-      return MixinApi({ keystore });
+      return MixinApi({ keystore, requestConfig: defaultHttpConfig });
     },
     getMixinClient: () => {
       const { keystore } = get();
-      return MixinApi({ keystore });
+      return MixinApi({ keystore, requestConfig: defaultHttpConfig });
     },
     getMe: async () => {
       const { keystore } = get();
       if (!keystore) return;
-      const mc = MixinApi({ keystore });
+      const mc = MixinApi({ keystore, requestConfig: defaultHttpConfig });
       try {
         const user = await mc.user.profile();
         const mix = buildMixAddress({

@@ -51,7 +51,11 @@ interface SwapStore {
   wrapSolAct: (amount: string) => Promise<string | undefined>
 }
 
-const client = MixinApi();
+const client = MixinApi({ 
+  requestConfig: {
+    timeout: 1000 * 60,
+  }
+});
 
 export interface ComputeParams {
   inputMint: string
