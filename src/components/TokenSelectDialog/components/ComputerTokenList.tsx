@@ -71,14 +71,14 @@ export default forwardRef<
 
   useEffect(() => {
     const compareFn = (itemA: TokenInfo, itemB: TokenInfo) => {
-      const ta = mixinTokenAccountMap[itemA.address]
-      const tb = mixinTokenAccountMap[itemB.address]
-      const amountA = new Decimal(ta.total_amount);
-      const amountB = new Decimal(tb.total_amount);
-      const priceA = new Decimal(ta.asset.price_usd);
-      const priceB = new Decimal(tb.asset.price_usd);
-      const usdA = amountA.mul(priceA || 0)
-      const usdB = amountB.mul(priceB || 0)
+      const ta = mixinTokenAccountMap[itemA.address];
+      const tb = mixinTokenAccountMap[itemB.address];
+      const amountA = new Decimal(ta ? ta.total_amount : 0);
+      const amountB = new Decimal(tb ? tb.total_amount : 0);
+      const priceA = new Decimal(ta ? ta.asset.price_usd : 0);
+      const priceB = new Decimal(tb ? tb.asset.price_usd : 0);
+      const usdA = amountA.mul(priceA || 0);
+      const usdB = amountB.mul(priceB || 0);
 
       if (usdB.gt(usdA)) return 1
       if (usdB.eq(usdA)) {

@@ -51,8 +51,8 @@ export default forwardRef<
     const compareFn = (itemA: UserAssetBalance, itemB: UserAssetBalance) => {
       const accountA = tokenAccountMap[itemA.asset_id]
       const accountB = tokenAccountMap[itemB.asset_id]
-      const usdA = accountA.asset ? mul(accountA.total_amount, accountA.asset.price_usd) : undefined
-      const usdB = accountB.asset ? mul(accountB.total_amount, accountB.asset.price_usd) : undefined
+      const usdA = accountA?.asset ? mul(accountA.total_amount, accountA.asset.price_usd) : undefined
+      const usdB = accountB?.asset ? mul(accountB.total_amount, accountB.asset.price_usd) : undefined
 
       let flag
       if (!usdA && !usdB) flag = 0
