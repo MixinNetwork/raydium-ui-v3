@@ -3,6 +3,6 @@
   height: 100%;
 }
 
-body {
+.mobile_bottom_navbar {
   padding-bottom: calc(env(safe-area-inset-bottom));
 }
