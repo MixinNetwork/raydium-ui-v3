@@ -920,22 +920,26 @@ export const useClmmStore = createStore<ClmmState>(
           buildSystemCallInvoiceExtra(account.id, trace, false, "")
         )
         attachStorageEntry(invoice, uniqueConversationID(trace, "storage"), tx)
-        attachInvoiceEntry(invoice, {
-          trace_id: uniqueConversationID(trace, token1.asset_id),
-          asset_id: token1.asset_id,
-          amount: amount1,
-          extra: referenceExtra,
-          index_references: [],
-          hash_references: []
-        })
-        attachInvoiceEntry(invoice, {
-          trace_id: uniqueConversationID(trace, token2.asset_id),
-          asset_id: token2.asset_id,
-          amount: amount2,
-          extra: referenceExtra,
-          index_references: [],
-          hash_references: []
-        })
+        if (!eq(amount1, 0)) {
+          attachInvoiceEntry(invoice, {
+            trace_id: uniqueConversationID(trace, token1.asset_id),
+            asset_id: token1.asset_id,
+            amount: amount1,
+            extra: referenceExtra,
+            index_references: [],
+            hash_references: []
+          })
+        }
+        if (!eq(amount2, 0)) {
+          attachInvoiceEntry(invoice, {
+            trace_id: uniqueConversationID(trace, token2.asset_id),
+            asset_id: token2.asset_id,
+            amount: amount2,
+            extra: referenceExtra,
+            index_references: [],
+            hash_references: []
+          })
+        }
         if (balanceAddressMap[nft]) {
           attachInvoiceEntry(invoice, {
             trace_id: uniqueConversationID(trace, nft),
