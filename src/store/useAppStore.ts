@@ -211,68 +211,7 @@ const defaultHttpConfig: RequestConfig = {
   timeout: 1000 * 60
 }
 
-const getUserMixinBalance = async (mc: MixinClient, u: UserResponse, as: ComputerAssetResponse[]) => {
-  const webview = WebViewApi();
-  const platform = webview.getMixinContext().platform ?? '';
-
-  let bm = {} as Record<string, UserAssetBalanceWithoutAsset>
-  switch (platform) {
-    case 'Android':
-    case 'iOS': {
-      let done = false;
-      const cb = (assets: WebviewAsset[]) => {
-        assets.forEach(a => {
-          const address = as.find(a => a.asset_id === a.asset_id)?.address;
-          bm[a.asset_id] = {
-            asset_id: a.asset_id,
-            total_amount: a.balance,
-            address,
-          }
-        })
-        done = true;
-      }
-      await webview.getAssets([], cb);
-      while (!done) {
-        await sleep(100)
-      }
-      break;
-    }
-    default: {
-      const members = [u.user_id];
-      let offset = 0
-      let total: SafeUtxoOutput[] = []
-      while(true) {
-        const outputs = await mc.utxo.safeOutputs({
-          limit: 500,
-          members,
-          threshold: 1,
-          state: 'unspent',
-          offset
-        });
-        total = [...total, ...outputs]
-        if (outputs.length < 500) {
-          break;
-        }
-        offset = outputs[outputs.length - 1].sequence + 1
-      }
-      bm = total.reduce((prev, cur) => {
-        if (cur.inscription_hash) return prev;
-        const key = cur.asset_id;
-        if (prev[key]) {
-          prev[key].total_amount = add(prev[key].total_amount, cur.amount).toString();
-        } else {
-          const address = as.find(a => a.asset_id === cur.asset_id)?.address;
-          prev[key] = {
-            asset_id: cur.asset_id,
-            total_amount: cur.amount,
-            address,
-          }
-        }
-        return prev
-      }, {} as Record<string, UserAssetBalanceWithoutAsset>)
-    }
-  }
-
+const processUserBalance = async (mc: MixinClient, bm: Record<string, UserAssetBalanceWithoutAsset>, as: ComputerAssetResponse[]) => {
   if (!bm[SOL_ASSET_ID]) bm[SOL_ASSET_ID] = {
     asset_id: SOL_ASSET_ID,
     total_amount: "0",
@@ -286,7 +225,30 @@ const getUserMixinBalance = async (mc: MixinClient, u: UserResponse, as: Compute
       address: a.address
     }
   });
-  return bm;
+
+  const deployedAddrs = as.map(a => a.address);
+  const assets = await mc.safe.fetchAssets(Object.keys(bm));
+  const fbm = assets.reduce((prev, cur) => {
+    if (cur.chain_id === SOL_ASSET_ID && deployedAddrs.includes(cur.asset_key)) 
+      return prev;
+    const b = bm[cur.asset_id]
+    const v: UserAssetBalance = { ...b, asset: {
+      ...cur,
+      name: cur.display_name,
+      symbol: cur.display_symbol,
+    } }
+    if (cur.chain_id === SOL_ASSET_ID) 
+      v.address = cur.asset_key;
+    prev[cur.asset_id] = v;
+    return prev
+  }, {} as Record<string, UserAssetBalance>)
+  const bs = Object.values(fbm).filter(b => b.address);
+  const am = Object.fromEntries(bs.map(b => [b.address, b])) as Record<string, UserAssetBalance>
+  if (am[SOLMint.toString()] && !am[WSOLMint.toString()]) am[WSOLMint.toString()] = {
+    ...am[SOLMint.toString()],
+    hide: true
+  }
+  return [fbm, am];
 }
 
 export const useAppStore = createStore<AppState>(
@@ -333,31 +295,66 @@ export const useAppStore = createStore<AppState>(
     updateBalances: async (as: ComputerAssetResponse[]) => {
       const { user, getMixinClient } = get();
       if (!user) return;
-      const deployedAddrs = as.map(a => a.address);
       const client = getMixinClient();
-      const bm = await getUserMixinBalance(client, user, as);
-      const assets = await client.safe.fetchAssets(Object.keys(bm));
-      const fbm = assets.reduce((prev, cur) => {
-        if (cur.chain_id === SOL_ASSET_ID && deployedAddrs.includes(cur.asset_key)) 
-          return prev;
-        const b = bm[cur.asset_id]
-        const v: UserAssetBalance = { ...b, asset: {
-          ...cur,
-          name: cur.display_name,
-          symbol: cur.display_symbol,
-        } }
-        if (cur.chain_id === SOL_ASSET_ID) 
-          v.address = cur.asset_key;
-        prev[cur.asset_id] = v;
-        return prev
-      }, {} as Record<string, UserAssetBalance>)
-      const bs = Object.values(fbm).filter(b => b.address);
-      const am = Object.fromEntries(bs.map(b => [b.address, b])) as Record<string, UserAssetBalance>
-      if (am[SOLMint.toString()] && !am[WSOLMint.toString()]) am[WSOLMint.toString()] = {
-        ...am[SOLMint.toString()],
-        hide: true
+      const webview = WebViewApi();
+      const platform = webview.getMixinContext().platform ?? '';
+
+      switch (platform) {
+        case 'Android':
+        case 'iOS': {
+          const cb = async (assets: WebviewAsset[]) => {
+            const bm = {} as Record<string, UserAssetBalanceWithoutAsset>;
+            assets.forEach(a => {
+              const address = as.find(a => a.asset_id === a.asset_id)?.address;
+              bm[a.asset_id] = {
+                asset_id: a.asset_id,
+                total_amount: a.balance,
+                address,
+              }
+            })
+            const [fbm, am] = await processUserBalance(client, bm, as)
+            set({ balances: fbm, balanceAddressMap: am })
+          }
+          await webview.getAssets([], cb);
+          break;
+        }
+        default: {
+          const members = [user.user_id];
+          let offset = 0
+          let total: SafeUtxoOutput[] = []
+          while(true) {
+            const outputs = await client.utxo.safeOutputs({
+              limit: 500,
+              members,
+              threshold: 1,
+              state: 'unspent',
+              offset
+            });
+            total = [...total, ...outputs]
+            if (outputs.length < 500) {
+              break;
+            }
+            offset = outputs[outputs.length - 1].sequence + 1
+          }
+          const bm = total.reduce((prev, cur) => {
+            if (cur.inscription_hash) return prev;
+            const key = cur.asset_id;
+            if (prev[key]) {
+              prev[key].total_amount = add(prev[key].total_amount, cur.amount).toString();
+            } else {
+              const address = as.find(a => a.asset_id === cur.asset_id)?.address;
+              prev[key] = {
+                asset_id: cur.asset_id,
+                total_amount: cur.amount,
+                address,
+              }
+            }
+            return prev
+          }, {} as Record<string, UserAssetBalanceWithoutAsset>)
+          const [fbm, am] = await processUserBalance(client, bm, as)
+          set({ balances: fbm, balanceAddressMap: am })
+        }
       }
-      set({ balances: fbm, balanceAddressMap: am })
     },
     getComputerInfo: async () => {
       const info = await client.fetchInfo();
