@@ -15,7 +15,7 @@ import {
 } from '@raydium-io/raydium-sdk-v2'
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base'
 import { Wallet } from '@solana/wallet-adapter-react'
-import { buildMixAddress, MixinApi, RequestConfig, SafeUtxoOutput, UserResponse, WebViewApi, WebviewAsset, type Keystore } from '@mixin.dev/mixin-node-sdk';
+import { buildMixAddress, MixinApi, RequestConfig, SafeUtxoOutput, sleep, UserResponse, WebViewApi, WebviewAsset, type Keystore } from '@mixin.dev/mixin-node-sdk';
 import createStore from './createStore'
 import { blackJupMintSet, useTokenStore } from './useTokenStore'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
@@ -230,6 +230,7 @@ const getUserMixinBalance = async (mc: MixinClient, u: UserResponse, as: Compute
         })
       }
       await webview.getAssets([], cb);
+      await sleep(1000)
       break;
     }
     default: {
