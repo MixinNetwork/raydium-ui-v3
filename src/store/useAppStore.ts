@@ -15,7 +15,7 @@ import {
 } from '@raydium-io/raydium-sdk-v2'
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base'
 import { Wallet } from '@solana/wallet-adapter-react'
-import { buildMixAddress, MixinApi, RequestConfig, SafeUtxoOutput, UserResponse, type Keystore } from '@mixin.dev/mixin-node-sdk';
+import { buildMixAddress, MixinApi, RequestConfig, SafeUtxoOutput, UserResponse, WebViewApi, WebviewAsset, type Keystore } from '@mixin.dev/mixin-node-sdk';
 import createStore from './createStore'
 import { blackJupMintSet, useTokenStore } from './useTokenStore'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
@@ -210,6 +210,80 @@ let epochInfoCache = {
 const defaultHttpConfig: RequestConfig = {
   timeout: 1000 * 60
 }
+
+const getUserMixinBalance = async (mc: MixinClient, u: UserResponse, as: ComputerAssetResponse[]) => {
+  const webview = WebViewApi();
+  const platform = webview.getMixinContext().platform ?? '';
+
+  let bm = {} as Record<string, UserAssetBalanceWithoutAsset>
+  switch (platform) {
+    case 'Android':
+    case 'iOS': {
+      const cb = (assets: WebviewAsset[]) => {
+        assets.forEach(a => {
+          const address = as.find(a => a.asset_id === a.asset_id)?.address;
+          bm[a.asset_id] = {
+            asset_id: a.asset_id,
+            total_amount: a.balance,
+            address,
+          }
+        })
+      }
+      await webview.getAssets([], cb);
+      break;
+    }
+    default: {
+      const members = [u.user_id];
+      let offset = 0
+      let total: SafeUtxoOutput[] = []
+      while(true) {
+        const outputs = await mc.utxo.safeOutputs({
+          limit: 500,
+          members,
+          threshold: 1,
+          state: 'unspent',
+          offset
+        });
+        total = [...total, ...outputs]
+        if (outputs.length < 500) {
+          break;
+        }
+        offset = outputs[outputs.length - 1].sequence + 1
+      }
+      bm = total.reduce((prev, cur) => {
+        if (cur.inscription_hash) return prev;
+        const key = cur.asset_id;
+        if (prev[key]) {
+          prev[key].total_amount = add(prev[key].total_amount, cur.amount).toString();
+        } else {
+          const address = as.find(a => a.asset_id === cur.asset_id)?.address;
+          prev[key] = {
+            asset_id: cur.asset_id,
+            total_amount: cur.amount,
+            address,
+          }
+        }
+        return prev
+      }, {} as Record<string, UserAssetBalanceWithoutAsset>)
+    }
+  }
+
+  if (!bm[SOL_ASSET_ID]) bm[SOL_ASSET_ID] = {
+    asset_id: SOL_ASSET_ID,
+    total_amount: "0",
+    address: "11111111111111111111111111111111"
+  }
+  as.forEach(a => {
+    if (bm[a.asset_id]) return;
+    bm[a.asset_id] = {
+      asset_id: a.asset_id,
+      total_amount: "0",
+      address: a.address
+    }
+  });
+  return bm;
+}
+
 export const useAppStore = createStore<AppState>(
   (set, get) => ({
     ...appInitState,
@@ -255,59 +329,8 @@ export const useAppStore = createStore<AppState>(
       const { user, getMixinClient } = get();
       if (!user) return;
       const deployedAddrs = as.map(a => a.address);
-
       const client = getMixinClient();
-      const members = [user.user_id];
-      let offset = 0
-      let total: SafeUtxoOutput[] = []
-      while(true) {
-        const outputs = await client.utxo.safeOutputs({
-          limit: 500,
-          members,
-          threshold: 1,
-          state: 'unspent',
-          offset
-        });
-        total = [...total, ...outputs]
-        if (outputs.length < 500) {
-          break;
-        }
-        offset = outputs[outputs.length - 1].sequence + 1
-      }
-
-      const bm = total.reduce((prev, cur) => {
-        if (cur.inscription_hash) return prev;
-        const key = cur.asset_id;
-        if (prev[key]) {
-          prev[key].outputs = [...prev[key].outputs, cur];
-          prev[key].total_amount = add(prev[key].total_amount, cur.amount).toString();
-        } else {
-          const address = as.find(a => a.asset_id === cur.asset_id)?.address;
-          prev[key] = {
-            asset_id: cur.asset_id,
-            total_amount: cur.amount,
-            outputs: [cur],
-            address,
-          }
-        }
-        return prev
-      }, {} as Record<string, UserAssetBalanceWithoutAsset>)
-      if (!bm[SOL_ASSET_ID]) bm[SOL_ASSET_ID] = {
-        asset_id: SOL_ASSET_ID,
-        total_amount: "0",
-        outputs: [],
-        address: "11111111111111111111111111111111"
-      }
-      as.forEach(a => {
-        if (bm[a.asset_id]) return;
-        bm[a.asset_id] = {
-          asset_id: a.asset_id,
-          total_amount: "0",
-          outputs: [],
-          address: a.address
-        }
-      });
-
+      const bm = await getUserMixinBalance(client, user, as);
       const assets = await client.safe.fetchAssets(Object.keys(bm));
       const fbm = assets.reduce((prev, cur) => {
         if (cur.chain_id === SOL_ASSET_ID && deployedAddrs.includes(cur.asset_key)) 
