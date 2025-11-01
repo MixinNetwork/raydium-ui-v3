@@ -2,7 +2,6 @@ import { updateReqHistory } from '@raydium-io/raydium-sdk-v2'
 import { toastSubject } from '@/hooks/toast/useGlobalToast'
 import i18n from '@/i18n'
 import axios from 'axios'
-import { sendNetworkEvent } from './event'
 
 const axiosInstance = axios.create({ timeout: 5 * 60 * 1000 })
 export const retryCount = 5
@@ -44,11 +43,6 @@ axiosInstance.interceptors.response.use(
     const { url } = config
 
     console.error(`axios request error: ${url}, status:${status || error.code}, msg:${response.message || error.message}`)
-    if (!url.includes('monitor'))
-      sendNetworkEvent({
-        url,
-        errorMsg: response.message || error.message
-      })
     if (!isSkipLogs(url)) {
       try {
         updateReqHistory({
