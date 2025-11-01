@@ -219,6 +219,7 @@ const getUserMixinBalance = async (mc: MixinClient, u: UserResponse, as: Compute
   switch (platform) {
     case 'Android':
     case 'iOS': {
+      let done = false;
       const cb = (assets: WebviewAsset[]) => {
         assets.forEach(a => {
           const address = as.find(a => a.asset_id === a.asset_id)?.address;
@@ -228,9 +229,12 @@ const getUserMixinBalance = async (mc: MixinClient, u: UserResponse, as: Compute
             address,
           }
         })
+        done = true;
       }
       await webview.getAssets([], cb);
-      await sleep(1000)
+      while (!done) {
+        await sleep(100)
+      }
       break;
     }
     default: {
