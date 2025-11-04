@@ -78,11 +78,12 @@ export default function SetPriceAndRange({
   onConfirm,
   onEdit
 }: Props) {
+  let initialized = false
   const { t } = useTranslation()
   const [getPriceAndTick, getTickPrice] = useClmmStore((s) => [s.getPriceAndTick, s.getTickPrice], shallow)
   const [priceReverse, setPriceReverse] = useState(false)
   const [rangeMode, setRangeMode] = useState<'full' | 'custom'>('full')
-  const [currentPrice, setCurrentPrice] = useState<string>(initState?.currentPrice || '')
+  const [currentPrice, _setCurrentPrice] = useState<string>(initState?.currentPrice || '')
   const [priceRange, setPriceRange] = useState<[string, string]>(initState?.priceRange || ['', ''])
   const switchRef = useRef(false)
   const focusMintARef = useRef(true)
@@ -90,6 +91,11 @@ export default function SetPriceAndRange({
   const hasInitPriceRange = !!initState?.priceRange?.[0] && !!initState?.priceRange?.[1]
   priceRangeRef.current = priceRange
   const isFullRange = rangeMode === 'full'
+
+  const setCurrentPrice = (price: string | ((val: string) => string)) => {
+    _setCurrentPrice(price);
+    initialized = true;
+  }
 
   const handleFocus = useEvent((isMintA: boolean) => {
     focusMintARef.current = isMintA
@@ -118,6 +124,10 @@ export default function SetPriceAndRange({
           .toDecimalPlaces((priceReverse ? tokenQuote.decimals : tokenBase.decimals) || 6)
           .toString()
       : '-- '
+  useEffect(() => {
+    if (onlinePrice === '-- ' || initialized) return;
+    setCurrentPrice(onlinePrice.toString());
+  }, [onlinePrice])
 
   const tickPriceRef = useRef<TickData>({})
   const fullRangeTickRef = useRef<TickData>({})
