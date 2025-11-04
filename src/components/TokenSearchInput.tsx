@@ -118,20 +118,20 @@ export default forwardRef(function TokenSearchInput(
     if (!searchValue) return []
     const selectedSet = new Set(selectedList.map((token) => token.address))
     const computerTokenList = Object.values(computerAssetAddressMap)
-    .map(a => {
-      return {
-        address: a.address,
-        chainId: 101,
-        decimals: a.decimals,
-        extensions: {},
-        logoURI: a.uri,
-        name: a.name,
-        programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-        symbol: a.symbol,
-        tags: ["mixin"],
-        priority: 90,
-      }
-    })
+      .map(a => {
+        return {
+          address: a.address,
+          chainId: 101,
+          decimals: a.decimals,
+          extensions: {},
+          logoURI: a.uri,
+          name: a.name,
+          programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          symbol: a.symbol,
+          tags: ["mixin"],
+          priority: 90,
+        }
+      });
     return filterTokenFn([...computerTokenList, ...displayTokenList], {
       searchStr: searchValue,
       skipFn: (data) => selectedSet.has(data.address)

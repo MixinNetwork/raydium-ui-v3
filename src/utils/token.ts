@@ -85,7 +85,14 @@ export const filterTokenFn = (list: TokenInfo[], params?: { searchStr?: string; 
         sortRules: [{ value: (i) => i.type === 'raydium' }]
       })
       : tokenGroup[1]
-    filteredList = tokenGroup.flat().filter(Boolean)
+    const am = tokenGroup
+      .flat()
+      .filter(Boolean)
+      .reduce((prev, cur) => {
+        prev[cur.address] = cur;
+        return prev;
+      }, {} as Record<string, TokenInfo>);
+    filteredList = Object.values(am);
   }
   return filteredList
 }
