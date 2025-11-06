@@ -304,7 +304,6 @@ export const useAppStore = createStore<AppState>(
         case 'iOS': {
           const cb = async (assets: WebviewAsset[]) => {
             try {
-              alert("assets "+ assets.length)
               const bm = {} as Record<string, UserAssetBalanceWithoutAsset>;
               assets.forEach(a => {
                 const address = as.find(a => a.asset_id === a.asset_id)?.address;
@@ -314,13 +313,9 @@ export const useAppStore = createStore<AppState>(
                   address,
                 }
               })
-              alert("bm "+ Object.values(bm).length)
               const [fbm, am] = await processUserBalance(client, bm, as)
-              alert("fbm "+ Object.values(fbm).length)
               set({ balances: fbm, balanceAddressMap: am })
-            } catch (e) {
-              alert(e)
-            }
+            } catch (e) {}
           }
           await webview.getAssets([], cb);
           break;
