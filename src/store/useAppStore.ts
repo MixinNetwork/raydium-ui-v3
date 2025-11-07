@@ -316,8 +316,8 @@ export const useAppStore = createStore<AppState>(
                   address,
                 }
               })
-              alert("bm xin " + JSON.stringify(bm['c94ac88f-4671-3976-b60a-09064f1811e8'].address))
-              alert("bm girl " + JSON.stringify(bm['c36d5ab4-8a38-3a2c-9c8d-37e4391b3044'].address))
+              alert("bm xin " + JSON.stringify(bm['c94ac88f-4671-3976-b60a-09064f1811e8']))
+              alert("bm girl " + JSON.stringify(bm['c36d5ab4-8a38-3a2c-9c8d-37e4391b3044']))
               const [fbm, am] = await processUserBalance(client, bm, as)
               alert("am " + JSON.stringify(am['4s4H5v4TXpmS4Ss66nxcCLgxrU5nunuwtkQceinZfGuw']))
               set({ balances: fbm, balanceAddressMap: am })
