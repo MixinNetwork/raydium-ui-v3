@@ -86,7 +86,7 @@ export default forwardRef<
       }
       return -1
     }
-    alert("TokenList " + !!mixinTokenAccountMap["c94ac88f-4671-3976-b60a-09064f1811e8"])
+    alert("TokenList " + !!mixinTokenAccountMap["4s4H5v4TXpmS4Ss66nxcCLgxrU5nunuwtkQceinZfGuw"])
     const list = user 
       ? Object.values(mixinTokenAccountMap).reduce((prev, balance) => {
         if (

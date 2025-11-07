@@ -248,12 +248,6 @@ const processUserBalance = async (mc: MixinClient, bm: Record<string, UserAssetB
     ...am[SOLMint.toString()],
     hide: true
   }
-  console.log(fbm)
-  console.log(bs)
-  console.log(am)
-  alert("fbm " + fbm["c94ac88f-4671-3976-b60a-09064f1811e8"].address)
-  alert("bs " + bs.findIndex(b => b.asset_id === 'c94ac88f-4671-3976-b60a-09064f1811e8'))
-  alert("am " + am["4s4H5v4TXpmS4Ss66nxcCLgxrU5nunuwtkQceinZfGuw"].address)
   return [fbm, am];
 }
 
@@ -310,7 +304,6 @@ export const useAppStore = createStore<AppState>(
         case 'iOS': {
           const cb = async (assets: WebviewAsset[]) => {
             try {
-              alert("assets " + assets.map(a => a.symbol).join(', '))
               const bm = {} as Record<string, UserAssetBalanceWithoutAsset>;
               assets.forEach(a => {
                 const address = as.find(a => a.asset_id === a.asset_id)?.address;
@@ -320,12 +313,9 @@ export const useAppStore = createStore<AppState>(
                   address,
                 }
               })
-              alert("bm " + bm["c94ac88f-4671-3976-b60a-09064f1811e8"].address)
               const [fbm, am] = await processUserBalance(client, bm, as)
               set({ balances: fbm, balanceAddressMap: am })
-            } catch (e) {
-              alert(e)
-            }
+            } catch (e) {}
           }
           await webview.getAssets([], cb);
           break;
