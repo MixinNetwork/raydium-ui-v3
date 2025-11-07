@@ -242,7 +242,7 @@ const processUserBalance = async (mc: MixinClient, bm: Record<string, UserAssetB
     prev[cur.asset_id] = v;
     return prev
   }, {} as Record<string, UserAssetBalance>)
-  const bs = Object.values(fbm).filter(b => b.address);
+  const bs = Object.values(fbm).filter(b => !!b.address);
   const am = Object.fromEntries(bs.map(b => [b.address, b])) as Record<string, UserAssetBalance>
   if (am[SOLMint.toString()] && !am[WSOLMint.toString()]) am[WSOLMint.toString()] = {
     ...am[SOLMint.toString()],
