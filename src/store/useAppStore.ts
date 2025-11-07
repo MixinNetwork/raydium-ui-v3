@@ -304,7 +304,7 @@ export const useAppStore = createStore<AppState>(
         case 'iOS': {
           const cb = async (assets: WebviewAsset[]) => {
             try {
-              alert("assets" + assets.length)
+              alert("assets " + assets.map(a => a.symbol).join(', '))
               const bm = {} as Record<string, UserAssetBalanceWithoutAsset>;
               assets.forEach(a => {
                 const address = as.find(a => a.asset_id === a.asset_id)?.address;
