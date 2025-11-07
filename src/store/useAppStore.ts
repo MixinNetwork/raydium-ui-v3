@@ -253,7 +253,7 @@ const processUserBalance = async (mc: MixinClient, bm: Record<string, UserAssetB
   console.log(am)
   alert("fbm " + fbm["c94ac88f-4671-3976-b60a-09064f1811e8"].address)
   alert("bs " + bs.findIndex(b => b.asset_id === 'c94ac88f-4671-3976-b60a-09064f1811e8'))
-  alert("am " + am["c94ac88f-4671-3976-b60a-09064f1811e8"].address)
+  alert("am " + am["4s4H5v4TXpmS4Ss66nxcCLgxrU5nunuwtkQceinZfGuw"].address)
   return [fbm, am];
 }
 
