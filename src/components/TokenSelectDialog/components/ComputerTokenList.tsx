@@ -89,6 +89,9 @@ export default forwardRef<
     }
     const list = user 
       ? Object.values(mixinTokenAccountMap).reduce((prev, balance) => {
+        if (balance.asset_id === "c94ac88f-4671-3976-b60a-09064f1811e8") {
+          alert("TokenList " + balance.hide + "" + balance.address + "" + computerAssetAddressMap[balance.address || ''])
+        }
         if (
           balance?.hide ||
           !balance.address || 
