@@ -248,6 +248,9 @@ const processUserBalance = async (mc: MixinClient, bm: Record<string, UserAssetB
     ...am[SOLMint.toString()],
     hide: true
   }
+  console.log(fbm)
+  console.log(bs)
+  console.log(am)
   alert("fbm " + fbm["c94ac88f-4671-3976-b60a-09064f1811e8"].address)
   alert("bs " + bs.findIndex(b => b.asset_id === 'c94ac88f-4671-3976-b60a-09064f1811e8"'))
   alert("am " + am["c94ac88f-4671-3976-b60a-09064f1811e8"].address)
