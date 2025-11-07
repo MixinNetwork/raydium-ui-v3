@@ -5,9 +5,8 @@ import { useEvent } from '@/hooks/useEvent'
 import SearchIcon from '@/icons/misc/SearchIcon'
 import { useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
 import { colors } from '@/theme/cssVariables'
-import { sortItems } from '@/utils/sortItems'
 import { filterFilteredMixinTokenFn } from '@/utils/token'
-import { Box, Divider, Flex, Heading, Input, InputGroup, InputRightAddon, SimpleGrid, Text } from '@chakra-ui/react'
+import { Box, Divider, Flex, Heading, Input, InputGroup, InputRightAddon, Text } from '@chakra-ui/react'
 import Decimal from 'decimal.js'
 import List, { ListPropController } from '@/components/List'
 import AddressChip from '@/components/AddressChip'
@@ -87,11 +86,9 @@ export default forwardRef<
       }
       return -1
     }
+    alert("TokenList " + !!mixinTokenAccountMap["c94ac88f-4671-3976-b60a-09064f1811e8"])
     const list = user 
       ? Object.values(mixinTokenAccountMap).reduce((prev, balance) => {
-        if (balance.asset_id === "c94ac88f-4671-3976-b60a-09064f1811e8") {
-          alert("TokenList " + balance.hide + "" + balance.address + "" + computerAssetAddressMap[balance.address || ''])
-        }
         if (
           balance?.hide ||
           !balance.address || 
@@ -150,7 +147,7 @@ export default forwardRef<
     const filteredList = search ? filterFilteredMixinTokenFn(sortedTokenList, { searchStr: search }) : sortedTokenList
     setDisplayList(filteredList)
     setFilteredList(filteredList)
-  }, [user, search, tokenList, tokenAccountMap, orgTokenMap, tokenPrice])
+  }, [user, search, tokenList, tokenAccountMap, orgTokenMap, tokenPrice, mixinTokenAccountMap, computerAssetAddressMap])
 
   const tempSetNewToken = orgTokenMap.get(search)
   const { tokenInfo: newToken } = useTokenInfo({
