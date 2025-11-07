@@ -309,9 +309,9 @@ export const useAppStore = createStore<AppState>(
             try {
               const bm = {} as Record<string, UserAssetBalanceWithoutAsset>;
               assets.forEach(a => {
-                const address = as.find(a => a.asset_id === a.asset_id)?.address;
+                const address = as.find(da => da.asset_id === a.asset_id)?.address;
                 if (['c94ac88f-4671-3976-b60a-09064f1811e8', 'c36d5ab4-8a38-3a2c-9c8d-37e4391b3044'].includes(a.asset_id)) {
-                  alert("asset " + a.asset_id + " " + JSON.stringify(as.find(a => a.asset_id === a.asset_id)))
+                  alert("asset " + a.asset_id + " " + JSON.stringify(as.find(da => da.asset_id === a.asset_id)))
                 }
                 bm[a.asset_id] = {
                   asset_id: a.asset_id,
