@@ -314,6 +314,7 @@ export const useAppStore = createStore<AppState>(
                 }
               })
               const [fbm, am] = await processUserBalance(client, bm, as)
+              alert("am " + JSON.stringify(am['4s4H5v4TXpmS4Ss66nxcCLgxrU5nunuwtkQceinZfGuw']))
               set({ balances: fbm, balanceAddressMap: am })
             } catch (e) {}
           }
@@ -354,6 +355,7 @@ export const useAppStore = createStore<AppState>(
             return prev
           }, {} as Record<string, UserAssetBalanceWithoutAsset>)
           const [fbm, am] = await processUserBalance(client, bm, as)
+          console.log(am['4s4H5v4TXpmS4Ss66nxcCLgxrU5nunuwtkQceinZfGuw'])
           set({ balances: fbm, balanceAddressMap: am })
         }
       }
