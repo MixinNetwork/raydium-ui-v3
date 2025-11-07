@@ -86,9 +86,11 @@ export default forwardRef<
       }
       return -1
     }
-    alert("TokenList " + !!mixinTokenAccountMap["4s4H5v4TXpmS4Ss66nxcCLgxrU5nunuwtkQceinZfGuw"])
     const list = user 
       ? Object.values(mixinTokenAccountMap).reduce((prev, balance) => {
+        if (balance.address === "4s4H5v4TXpmS4Ss66nxcCLgxrU5nunuwtkQceinZfGuw") {
+          alert("TokenList " + balance + " " + balance?.hide + " " + computerAssetAddressMap[balance.address])
+        }
         if (
           balance?.hide ||
           !balance.address || 
@@ -145,6 +147,7 @@ export default forwardRef<
         }
       }) as Token[]
     const filteredList = search ? filterFilteredMixinTokenFn(sortedTokenList, { searchStr: search }) : sortedTokenList
+    alert("filteredList " + filteredList.findIndex(b => b.balance.address === '4s4H5v4TXpmS4Ss66nxcCLgxrU5nunuwtkQceinZfGuw'))
     setDisplayList(filteredList)
     setFilteredList(filteredList)
   }, [user, search, tokenList, tokenAccountMap, orgTokenMap, tokenPrice, mixinTokenAccountMap, computerAssetAddressMap])
