@@ -300,26 +300,30 @@ export const useAppStore = createStore<AppState>(
       const platform = webview.getMixinContext().platform ?? '';
 
       switch (platform) {
-        // case 'Android':
-        // case 'iOS': {
-        //   const cb = async (assets: WebviewAsset[]) => {
-        //     try {
-        //       const bm = {} as Record<string, UserAssetBalanceWithoutAsset>;
-        //       assets.forEach(a => {
-        //         const address = as.find(a => a.asset_id === a.asset_id)?.address;
-        //         bm[a.asset_id] = {
-        //           asset_id: a.asset_id,
-        //           total_amount: a.balance,
-        //           address,
-        //         }
-        //       })
-        //       const [fbm, am] = await processUserBalance(client, bm, as)
-        //       set({ balances: fbm, balanceAddressMap: am })
-        //     } catch (e) {}
-        //   }
-        //   await webview.getAssets([], cb);
-        //   break;
-        // }
+        case 'Android':
+        case 'iOS': {
+          const cb = async (assets: WebviewAsset[]) => {
+            try {
+              alert("assets" + assets.length)
+              const bm = {} as Record<string, UserAssetBalanceWithoutAsset>;
+              assets.forEach(a => {
+                const address = as.find(a => a.asset_id === a.asset_id)?.address;
+                bm[a.asset_id] = {
+                  asset_id: a.asset_id,
+                  total_amount: a.balance,
+                  address,
+                }
+              })
+              alert("bm" + Object.values(bm).length)
+              const [fbm, am] = await processUserBalance(client, bm, as)
+              set({ balances: fbm, balanceAddressMap: am })
+            } catch (e) {
+              alert(e)
+            }
+          }
+          await webview.getAssets([], cb);
+          break;
+        }
         default: {
           const members = [user.user_id];
           let offset = 0
