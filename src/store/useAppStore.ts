@@ -314,8 +314,9 @@ export const useAppStore = createStore<AppState>(
                   address,
                 }
               })
-              alert("bm" + Object.values(bm).length)
+              alert("bm " + bm["c94ac88f-4671-3976-b60a-09064f1811e8"])
               const [fbm, am] = await processUserBalance(client, bm, as)
+              alert("fbm " + fbm["c94ac88f-4671-3976-b60a-09064f1811e8"])
               set({ balances: fbm, balanceAddressMap: am })
             } catch (e) {
               alert(e)
