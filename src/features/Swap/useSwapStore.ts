@@ -172,14 +172,14 @@ export const useSwapStore = createStore<SwapStore>(
         }
         instructions.push(...computeIns)
         
-        const alts = await cc.getAtls();
-        const rpcAccounts = await Promise.all(alts.map(a => connection.getAddressLookupTable(new PublicKey(a))));
-        const altsAccounts = rpcAccounts.map(a => a.value).filter(a => a != null) as AddressLookupTableAccount[];
+        // const alts = await cc.getAtls();
+        // const rpcAccounts = await Promise.all(alts.map(a => connection.getAddressLookupTable(new PublicKey(a))));
+        // const altsAccounts = rpcAccounts.map(a => a.value).filter(a => a != null) as AddressLookupTableAccount[];
         const messageV0 = new TransactionMessage({
           payerKey: new PublicKey(info.payer),
           recentBlockhash: nonce.nonce_hash,
           instructions,
-        }).compileToV0Message(altsAccounts);
+        }).compileToV0Message();
         const tx = new VersionedTransaction(messageV0);
         
         const txBuf = Buffer.from(tx.serialize());
