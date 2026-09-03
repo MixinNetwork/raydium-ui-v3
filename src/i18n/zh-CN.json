@@ -94,6 +94,7 @@
   },
   "setting_board": {
     "panel_title": "设置",
+    "logout": "退出登录",
     "default_explorer": "默认浏览器",
     "default_explorer_tooltip": "选择常用的区块浏览器",
     "rpc_connection": "RPC连接",

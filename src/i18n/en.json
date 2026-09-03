@@ -122,6 +122,7 @@
   },
   "setting_board": {
     "panel_title": "Settings",
+    "logout": "Log Out",
     "default_explorer": "Default Explorer",
     "default_explorer_tooltip": "Select preferred block explorer",
     "rpc_connection": "RPC Connection",

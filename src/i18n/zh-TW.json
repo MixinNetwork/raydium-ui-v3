@@ -40,6 +40,9 @@
     "add": "增加",
     "successfully": "已成功"
   },
+  "setting_board": {
+    "logout": "登出"
+  },
   "field": {
     "24h_volume": "24小時交易量",
     "24h_fees": "24小時手續費",

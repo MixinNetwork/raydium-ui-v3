@@ -93,6 +93,7 @@
   },
   "setting_board": {
     "panel_title": "Configuración",
+    "logout": "Cerrar sesión",
     "default_explorer": "Explorador predeterminado",
     "default_explorer_tooltip": "Seleccione el explorador de bloques preferido",
     "rpc_connection": "Conexión RPC",

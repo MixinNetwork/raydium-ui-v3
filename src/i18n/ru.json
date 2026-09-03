@@ -93,6 +93,7 @@
   },
   "setting_board": {
     "panel_title": "Настройки",
+    "logout": "Выйти",
     "default_explorer": "Default Explorer",
     "default_explorer_tooltip": "Выберите предпочтительный обозреватель блоков",
     "rpc_connection": "RPC-соединение",

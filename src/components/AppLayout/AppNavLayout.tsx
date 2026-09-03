@@ -6,6 +6,7 @@ import { colors } from '@/theme/cssVariables'
 import { appLayoutPaddingX } from '@/theme/detailConfig'
 import {
   Box,
+  Button,
   Flex,
   HStack,
   Modal,
@@ -210,6 +211,8 @@ function SettingsMenuModalContent(props: { isOpen: boolean; triggerRef: React.Re
   const { t } = useTranslation()
   const triggerPanelGap = 8
   const isMobile = useAppStore((s) => s.isMobile)
+  const isLoggedIn = useAppStore((s) => Boolean(s.keystore))
+  const logout = useAppStore((s) => s.logout)
   const getTriggerRect = () => props.triggerRef.current?.getBoundingClientRect()
 
   return (
@@ -243,6 +246,14 @@ function SettingsMenuModalContent(props: { isOpen: boolean; triggerRef: React.Re
           <Divider />
           <ColorThemeSettingField />
           <Divider />
+          {isLoggedIn ? (
+            <>
+              <Button width="full" variant="danger" onClick={logout}>
+                {t('setting_board.logout')}
+              </Button>
+              <Divider />
+            </>
+          ) : null}
           <AppVersion />
         </ModalBody>
       </ModalContent>

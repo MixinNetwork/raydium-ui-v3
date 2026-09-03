@@ -85,6 +85,7 @@ interface AppState {
   balanceAddressMap: Record<string, UserAssetBalance>;
   getMixinClient: () => MixinClient;
   setKeystore: (k :Keystore) => MixinClient;
+  logout: () => void;
   getMe: () => Promise<void>;
   updateBalances: (cas: ComputerAssetResponse[]) => Promise<void>;
   getUserMix: () => string;
@@ -163,6 +164,9 @@ const loadKeystore = () => {
 const saveKeystore = (k: Keystore) => {
   localStorage.setItem('keystore', JSON.stringify(k));
 }
+const clearKeystore = () => 
+  localStorage.removeItem('keystore');
+
 const client = initComputerClient();
 
 const appInitState = {
@@ -261,6 +265,18 @@ export const useAppStore = createStore<AppState>(
       saveKeystore(keystore);
       set({ keystore })
       return MixinApi({ keystore, requestConfig: defaultHttpConfig });
+    },
+    logout: () => {
+      clearKeystore();
+      set({
+        keystore: undefined,
+        user: undefined,
+        account: undefined,
+        publicKey: undefined,
+        connected: false,
+        balances: {},
+        balanceAddressMap: {}
+      })
     },
     getMixinClient: () => {
       const { keystore } = get();

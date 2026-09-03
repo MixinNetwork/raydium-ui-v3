@@ -93,6 +93,7 @@
   },
   "setting_board": {
     "panel_title": "設定",
+    "logout": "ログアウト",
     "default_explorer": "デフォルトエクスプローラー",
     "default_explorer_tooltip": "好みのブロックエクスプローラーを選択",
     "rpc_connection": "RPC接続",

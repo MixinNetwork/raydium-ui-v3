@@ -93,6 +93,7 @@
   },
   "setting_board": {
     "panel_title": "Ayarlar",
+    "logout": "Çıkış Yap",
     "default_explorer": "Varsayılan Blok gezgini",
     "default_explorer_tooltip": "Tercih edilen blok gezginini seçin",
     "rpc_connection": "RPC Bağlantısı",

@@ -110,6 +110,7 @@
   },
   "setting_board": {
     "panel_title": "설정",
+    "logout": "로그아웃",
     "default_explorer": "기본 탐색기",
     "default_explorer_tooltip": "선호하는 블록 탐색기를 선택",
     "rpc_connection": "RPC 연결",

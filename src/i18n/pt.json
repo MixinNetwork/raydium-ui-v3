@@ -93,6 +93,7 @@
   },
   "setting_board": {
     "panel_title": "Configurações",
+    "logout": "Sair",
     "default_explorer": "Explorador padrão",
     "default_explorer_tooltip": "Selecione o explorador de blocos preferido",
     "rpc_connection": "Conexão RPC",

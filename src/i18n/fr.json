@@ -93,6 +93,7 @@
   },
   "setting_board": {
     "panel_title": "Paramètres",
+    "logout": "Se déconnecter",
     "default_explorer": "Explorer par défaut",
     "default_explorer_tooltip": "Sélectionner votre block explorer préféré",
     "rpc_connection": "Connexion RPC",
