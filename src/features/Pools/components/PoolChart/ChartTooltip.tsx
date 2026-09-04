@@ -1,12 +1,16 @@
 import { Box } from '@chakra-ui/react'
 import { TooltipProps } from 'recharts'
-import { NameType, ValueType } from 'recharts/src/component/DefaultTooltipContent'
 
 import { toUTC } from '@/utils/date'
 import { formatCurrency } from '@/utils/numberish/formatter'
 import { colors } from '@/theme/cssVariables'
 
-export default function ChartTooltip({ active, payload, label, category }: TooltipProps<ValueType, NameType> & { category?: string }) {
+export default function ChartTooltip({
+  active,
+  payload,
+  label,
+  category
+}: TooltipProps<number | string, number | string> & { category?: string }) {
   const unit = 'USD'
   if (active && payload && payload.length) {
     return (

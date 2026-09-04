@@ -1,5 +1,5 @@
 import dynamic from 'next/dynamic'
-const Wormhole = dynamic(() => import('@/features/Wormhole'))
+const Wormhole = dynamic(() => import('@/features/Wormhole'), { ssr: false })
 
 function Bridge() {
   return <Wormhole />

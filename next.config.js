@@ -2,6 +2,7 @@
 const path = require('path')
 
 module.exports = {
+  output: 'export',
   trailingSlash: true,
   webpack: (config, { buildId, dev, isServer, defaultLoaders, nextRuntime, webpack }) => {
     config.resolve.alias = {
@@ -32,15 +33,6 @@ module.exports = {
     // }
 
     return config
-  },
-  async redirects() {
-    return [
-      {
-        source: '/',
-        destination: '/swap/',
-        permanent: false
-      }
-    ]
   }
 }
 

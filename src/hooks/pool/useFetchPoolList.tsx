@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import useSWRInfinite from 'swr/infinite'
-import { KeyedMutator } from 'swr'
+import useSWRInfinite, { SWRInfiniteKeyedMutator } from 'swr/infinite'
 import { AxiosResponse } from 'axios'
 import axios from '@/api/axios'
 import shallow from 'zustand/shallow'
@@ -32,7 +31,7 @@ export default function useFetchPoolList<T extends PoolFetchType>(props?: {
   setSize: (size: number | ((_size: number) => number)) => Promise<AxiosResponse<PoolsApiReturn, any>[] | undefined>
   size: number
   loadMore: () => void
-  mutate: KeyedMutator<AxiosResponse<PoolsApiReturn, any>[]>
+  mutate: SWRInfiniteKeyedMutator<AxiosResponse<PoolsApiReturn, any>[]>
   isValidating: boolean
   isLoading: boolean
   isEmpty: boolean
