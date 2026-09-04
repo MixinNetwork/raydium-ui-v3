@@ -81,6 +81,9 @@ export default function PoolListItem({
   const { isOpen: isPoolDetailOpen, onOpen: onPoolDetailOpen, onClose: onPoolDetailClose } = useDisclosure()
 
   const timeData = useMemo(() => pool[field], [pool, field])
+  const showPreciseTvl = pool.tvl > 0 && pool.tvl < 1
+  const formattedTvl = formatCurrency(pool.tvl, showPreciseTvl ? { symbol: '$' } : { symbol: '$', decimalPlaces: 0 })
+  const formattedTvlWithoutSymbol = formatCurrency(pool.tvl, showPreciseTvl ? {} : { decimalPlaces: 0 })
 
   const onFavoriteClick = () => {
     setIsFavoriteState((v) => !v)
@@ -212,7 +215,7 @@ export default function PoolListItem({
 
                     <Mobile>
                       <Text fontSize={['sm', 'lg']} textAlign={'right'}>
-                        {formatCurrency(pool.tvl, { symbol: '$', decimalPlaces: 0 })}
+                        {formattedTvl}
                       </Text>
                     </Mobile>
 
@@ -234,7 +237,7 @@ export default function PoolListItem({
           <Desktop>
             <HStack justify={'flex-end'} gap={2}>
               <Text fontSize={['sm', 'lg']} textAlign={'right'}>
-                {formatCurrency(pool.tvl, { symbol: '$', decimalPlaces: 0 })}
+                {formattedTvl}
               </Text>
               <Box minWidth="22px">
                 {Math.abs(pool.burnPercent || 0) > 5 && (
@@ -572,7 +575,7 @@ export default function PoolListItem({
                     {t('liquidity.title')}
                   </Text>
                   <Text fontSize="sm" color={colors.textSecondary}>
-                    {formatCurrency(pool.tvl, { symbol: '$', decimalPlaces: 0 })}
+                    {formattedTvl}
                   </Text>
                 </Flex>
                 <Flex flex={3} direction="column">
@@ -612,7 +615,7 @@ export default function PoolListItem({
           timeBase={timeBase}
           volume={formatCurrency(timeData.volume, { decimalPlaces: 0 })}
           fees={formatCurrency(timeData.volumeFee, { decimalPlaces: 0 })}
-          tvl={formatCurrency(pool.tvl, { decimalPlaces: 0 })}
+          tvl={formattedTvlWithoutSymbol}
           aprData={aprData}
           weeklyRewards={pool.weeklyRewards}
           isEcosystem={pool.rewardDefaultPoolInfos === 'Ecosystem'}

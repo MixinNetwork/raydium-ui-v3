@@ -262,7 +262,6 @@ export default function Pools() {
   }, [computerAssets]);
   const {
     formattedData: orgData,
-    isLoadEnded: isOrgLoadedEnd,
     isLoading: isOrgLoading
   } = useFetchPoolsByMint({
     addresses,
@@ -283,7 +282,6 @@ export default function Pools() {
 
   const {
     formattedData: searchMintData,
-    isLoadEnded: isSearchMintLoadEnded,
     isLoading: isSearchMintLoading
   } = useFetchPoolByMint({
     showFarms,
@@ -301,13 +299,10 @@ export default function Pools() {
 
   const searchData = searchIdData?.length ? searchIdData : searchMintData
   const isSearchLoading = isSearchPublicKey ? isSearchIdLoading || isSearchMintLoading : isSearchMintLoading
-  const isSearchLoadEnded = isSearchPublicKey ? !isSearchIdLoading && isSearchMintLoadEnded : isSearchMintLoadEnded
   const isNotFound = (searchTokens.length > 0 || isSearchPublicKey) && !isSearchLoading && !searchData.length
 
   const data = hasSearch || searchIdData?.length ? searchData : orgData
   const isLoading = hasSearch ? isSearchLoading : isOrgLoading
-  const isLoadEnded = hasSearch ? isSearchLoadEnded : isOrgLoadedEnd
-  const loadMore = () => {}
   const sortedData = useMemo(() => {
     // if (!favoritePools.size) return data
     const favorite: FormattedPoolInfoItem[] = []
@@ -577,14 +572,10 @@ export default function Pools() {
                 <List
                   controllerRef={listControllerRef}
                   {...scrollBodyProps}
-                  increaseRenderCount={showFarms ? 100 : 50}
-                  initRenderCount={30}
-                  reachBottomMargin={showFarms ? 200 : 150}
+                  renderAllAtOnce
                   preventResetOnChange={search === prevSearch}
                   gridSlotCount={currentLayoutStyle === 'grid' && isMobile ? 1 : undefined}
                   gridSlotItemMinWidth={currentLayoutStyle === 'grid' ? gridCardSize : undefined}
-                  haveLoadAll={isLoadEnded}
-                  onLoadMore={loadMore}
                   items={sortedData}
                   getItemKey={(item) => item.id}
                   gap={currentLayoutStyle === 'grid' ? gridCardGap : undefined}
