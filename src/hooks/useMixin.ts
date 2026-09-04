@@ -9,7 +9,10 @@ export default function useMixin() {
       [s.user, s.updateBalances], 
       shallow
   )
-  const computerAssets = useTokenStore((s) => s.computerAssets)
+  const [computerAssets, displayTokenList] = useTokenStore(
+    (s) => [s.computerAssets, s.displayTokenList],
+    shallow
+  )
 
   useEffect(() => {
     if (!user) return;
@@ -18,5 +21,5 @@ export default function useMixin() {
       updateBalances(computerAssets);
     }, 60 * 1000)
     return () => window.clearInterval(id)
-  }, [user, computerAssets])
+  }, [user, computerAssets, displayTokenList])
 }

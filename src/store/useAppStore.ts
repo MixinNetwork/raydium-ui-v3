@@ -28,6 +28,7 @@ import { compare } from 'compare-versions'
 import { ComputerAssetResponse, ComputerInfoResponse, ComputerUserResponse, UserAssetBalance, UserAssetBalanceWithoutAsset } from '@/types/computer';
 import { add } from '@/utils/number';
 import { SOL_ASSET_ID } from '@/utils/constant';
+import { buildAssetId } from '@/utils/mixin';
 
 export const defaultNetWork = WalletAdapterNetwork.Mainnet // Can be set to 'devnet', 'testnet', or 'mainnet-beta'
 export const defaultEndpoint = clusterApiUrl(defaultNetWork) // You can also provide a custom RPC endpoint
@@ -321,6 +322,18 @@ export const useAppStore = createStore<AppState>(
       switch (platform) {
         case 'Android':
         case 'iOS': {
+          const solanaSplAssetIds = useTokenStore
+            .getState()
+            .displayTokenList
+            .filter(({ address }) => address !== SOLMint.toString())
+            .map(({ address }) => buildAssetId(address))
+          const displayedAssetIds = [
+            ...new Set([
+              SOL_ASSET_ID,
+              ...as.map(({ asset_id }) => asset_id),
+              ...solanaSplAssetIds
+            ])
+          ]
           const cb = async (assets: WebviewAsset[]) => {
             try {
               const bm = {} as Record<string, UserAssetBalanceWithoutAsset>;
@@ -336,7 +349,7 @@ export const useAppStore = createStore<AppState>(
               set({ balances: fbm, balanceAddressMap: am })
             } catch (e) {}
           }
-          await webview.getAssets([], cb);
+          await webview.getAssets(displayedAssetIds, cb);
           break;
         }
         default: {
