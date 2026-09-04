@@ -21,17 +21,6 @@ import { Token } from '@/types/computer'
 
 const perPage = 30
 
-const decimalOrZero = (value: unknown) => {
-  if (value === null || value === undefined || value === '') return new Decimal(0)
-
-  try {
-    const decimal = new Decimal(value as Decimal.Value)
-    return decimal.isFinite() ? decimal : new Decimal(0)
-  } catch {
-    return new Decimal(0)
-  }
-}
-
 export interface TokenListHandles {
   resetSearch: () => void
 }
@@ -83,12 +72,12 @@ export default forwardRef<
     const compareFn = (itemA: TokenInfo, itemB: TokenInfo) => {
       const ta = mixinTokenAccountMap[itemA.address];
       const tb = mixinTokenAccountMap[itemB.address];
-      const amountA = decimalOrZero(ta?.total_amount);
-      const amountB = decimalOrZero(tb?.total_amount);
-      const priceA = decimalOrZero(ta?.asset?.price_usd);
-      const priceB = decimalOrZero(tb?.asset?.price_usd);
-      const usdA = amountA.mul(priceA);
-      const usdB = amountB.mul(priceB);
+      const amountA = new Decimal(ta ? ta.total_amount : 0);
+      const amountB = new Decimal(tb ? tb.total_amount : 0);
+      const priceA = new Decimal(ta ? ta.asset.price_usd : 0);
+      const priceB = new Decimal(tb ? tb.asset.price_usd : 0);
+      const usdA = amountA.mul(priceA || 0);
+      const usdB = amountB.mul(priceB || 0);
 
       if (usdB.gt(usdA)) return 1
       if (usdB.eq(usdA)) {
