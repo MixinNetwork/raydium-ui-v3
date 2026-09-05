@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { Box, Flex, Image, Text, useColorMode, useMediaQuery } from '@chakra-ui/react'
 import { useTranslation } from 'react-i18next'
-import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets'
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom'
 import { WalletReadyState } from '@solana/wallet-adapter-base'
 import RaydiumLogo from '@/icons/RaydiumLogo'
 import MoonPayIcon from '@/icons/misc/MoonPayIcon'

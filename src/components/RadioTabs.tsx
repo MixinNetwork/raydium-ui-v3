@@ -3,16 +3,16 @@ import { Box, HStack, useRadio, useRadioGroup, UseRadioProps } from '@chakra-ui/
 import { colors } from '@/theme/cssVariables'
 
 function RadioItem(props: UseRadioProps & { children: React.ReactNode }) {
-  const { getInputProps, getCheckboxProps } = useRadio(props)
+  const { getInputProps, getRadioProps } = useRadio(props)
 
   const input = getInputProps()
-  const checkbox = getCheckboxProps()
+  const radio = getRadioProps()
 
   return (
     <Box as="label">
       <input {...input} />
       <Box
-        {...checkbox}
+        {...radio}
         cursor="pointer"
         borderRadius="md"
         fontWeight="medium"

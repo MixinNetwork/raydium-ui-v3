@@ -7,8 +7,7 @@ import { useAppStore } from '@/store'
 import { formatPoolData, formatAprData } from './formatter'
 import { ReturnPoolType, ReturnFormattedPoolType } from './type'
 
-import useSWRInfinite from 'swr/infinite'
-import { KeyedMutator } from 'swr'
+import useSWRInfinite, { SWRInfiniteKeyedMutator } from 'swr/infinite'
 import { AxiosResponse } from 'axios'
 
 export default function useFetchPoolByMint<T extends PoolFetchType>(
@@ -29,7 +28,7 @@ export default function useFetchPoolByMint<T extends PoolFetchType>(
   isLoadEnded: boolean
   loadMore: () => void
   size: number
-  mutate: KeyedMutator<AxiosResponse<PoolsApiReturn, any>[]>
+  mutate: SWRInfiniteKeyedMutator<AxiosResponse<PoolsApiReturn, any>[]>
   isValidating: boolean
   isLoading: boolean
 } {
