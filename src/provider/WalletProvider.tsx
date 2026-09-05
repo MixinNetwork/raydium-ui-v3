@@ -10,6 +10,10 @@ import { type Adapter, type WalletError } from '@solana/wallet-adapter-base'
 import { sendWalletEvent } from '@/api/event'
 import { useEvent } from '@/hooks/useEvent'
 
+const reportWalletError = (wallet: string, error: unknown) => {
+  console.warn(`[WalletProvider] Failed to initialize ${wallet}`, error)
+}
+
 const App: FC<PropsWithChildren<any>> = ({ children }) => {
   const [network] = useState<WalletAdapterNetwork>(defaultNetWork)
   const [wallets, setWallets] = useState<Adapter[]>([])
@@ -22,24 +26,52 @@ const App: FC<PropsWithChildren<any>> = ({ children }) => {
     let cancelled = false
 
     const loadWallets = async () => {
-      try {
-        const [solflare, moongate, burner, walletConnect] = await Promise.all([
-          import('@solflare-wallet/wallet-adapter'),
-          import('@moongate/moongate-adapter'),
-          import('@solana/wallet-adapter-unsafe-burner'),
-          import('@walletconnect/solana-adapter')
-        ])
-        if (cancelled) return
+      const [solflare, moongate, burner, walletConnect] = await Promise.allSettled([
+        import('@solflare-wallet/wallet-adapter'),
+        import('@moongate/moongate-adapter'),
+        import('@solana/wallet-adapter-unsafe-burner'),
+        import('@walletconnect/solana-adapter')
+      ])
+      if (cancelled) return
 
-        solflare.initialize()
-        moongate.registerMoonGateWallet({ authMode: 'Ethereum', position: 'top-right' })
-        moongate.registerMoonGateWallet({ authMode: 'Google', position: 'top-right' })
-        moongate.registerMoonGateWallet({ authMode: 'Apple', position: 'top-right' })
+      if (solflare.status === 'fulfilled') {
+        try {
+          solflare.value.initialize()
+        } catch (error) {
+          reportWalletError('Solflare', error)
+        }
+      } else {
+        reportWalletError('Solflare', solflare.reason)
+      }
 
-        const nextWallets: Adapter[] = [new burner.UnsafeBurnerWalletAdapter()]
+      if (moongate.status === 'fulfilled') {
+        const authModes = ['Ethereum', 'Google', 'Apple'] as const
+        authModes.forEach((authMode) => {
+          try {
+            moongate.value.registerMoonGateWallet({ authMode, position: 'top-right' })
+          } catch (error) {
+            reportWalletError(`MoonGate (${authMode})`, error)
+          }
+        })
+      } else {
+        reportWalletError('MoonGate', moongate.reason)
+      }
+
+      const nextWallets: Adapter[] = []
+      if (burner.status === 'fulfilled') {
+        try {
+          nextWallets.push(new burner.value.UnsafeBurnerWalletAdapter())
+        } catch (error) {
+          reportWalletError('Unsafe Burner', error)
+        }
+      } else {
+        reportWalletError('Unsafe Burner', burner.reason)
+      }
+
+      if (walletConnect.status === 'fulfilled') {
         try {
           nextWallets.push(
-            new walletConnect.WalletConnectWalletAdapter({
+            new walletConnect.value.WalletConnectWalletAdapter({
               network: network as WalletAdapterNetwork.Mainnet,
               options: {
                 projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PJ_ID,
@@ -52,13 +84,14 @@ const App: FC<PropsWithChildren<any>> = ({ children }) => {
               }
             })
           )
-        } catch (e) {
-          // WalletConnect is optional when its environment configuration is unavailable.
+        } catch (error) {
+          reportWalletError('WalletConnect', error)
         }
-        if (!cancelled) setWallets(nextWallets)
-      } catch (e) {
-        // Browser wallet integrations are optional; keep the app usable if one fails to load.
+      } else {
+        reportWalletError('WalletConnect', walletConnect.reason)
       }
+
+      if (!cancelled) setWallets(nextWallets)
     }
 
     loadWallets()
