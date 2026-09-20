@@ -189,7 +189,10 @@ export default function CreateClmmPool() {
         nonce: nonce1
       })
 
-      if (!buildData) return
+      if (!buildData) {
+        setIsTxSending(false)
+        return
+      }
 
       const [mintAAmount, mintBAmount] = [
         new Decimal(currentCreateInfo.current.amount1!).mul(10 ** buildData.extInfo.mockPoolInfo.mintA.decimals).toFixed(0),
@@ -212,7 +215,11 @@ export default function CreateClmmPool() {
         onFinally: () => setIsTxSending(false)
       })
       setRequests(requests);
-      openTraceModal(requests[0]);
+      if (requests[0]) {
+        openTraceModal(requests[0]);
+      } else {
+        setIsTxSending(false)
+      }
     })
   )
   useEffect(() => {

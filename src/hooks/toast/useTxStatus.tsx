@@ -1,8 +1,8 @@
 import { useEffect, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SignatureResult, Context, VersionedTransaction, Transaction, TransactionError } from '@solana/web3.js'
+import { SignatureResult, Context, VersionedTransaction, Transaction } from '@solana/web3.js'
 import { Flex, Box } from '@chakra-ui/react'
-import { ApiV3Token, TxVersion } from '@raydium-io/raydium-sdk-v2'
+import { ApiV3Token } from '@raydium-io/raydium-sdk-v2'
 import { Subject } from 'rxjs'
 
 import { useAppStore } from '@/store/useAppStore'
@@ -233,7 +233,7 @@ function useTxStatus() {
               return
             }
             try {
-              const r = await connection.getTransaction(txId, { commitment: 'confirmed', maxSupportedTransactionVersion: TxVersion.V0 })
+              const r = await connection.getTransaction(txId, { commitment: 'confirmed', maxSupportedTransactionVersion: 1 })
               if (r) {
                 console.log('tx status from getTransaction')
                 cbk({ err: r.meta?.err || null }, { slot: r.slot })
@@ -509,7 +509,7 @@ function useTxStatus() {
                   return
                 }
                 try {
-                  const r = await connection.getTransaction(txId, { commitment: 'confirmed', maxSupportedTransactionVersion: TxVersion.V0 })
+                  const r = await connection.getTransaction(txId, { commitment: 'confirmed', maxSupportedTransactionVersion: 1 })
                   if (r) {
                     console.log('tx status from getTransaction:', txId)
                     cbk({ err: r.meta?.err || null }, { slot: r.slot })

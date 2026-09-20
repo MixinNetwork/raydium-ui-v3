@@ -41,6 +41,7 @@ import { getMintSymbol } from '@/utils/token'
 import { CLMM_FEE_CONFIGS, getTxMeta } from './configs/clmm'
 import { TxCallbackProps, TxCallbackPropsGeneric } from '../types/tx'
 import { getComputeBudgetConfig } from '@/utils/tx/computeBudget'
+import { buildSimulatedV1Transaction } from '@/utils/tx/v1'
 import { handleMultiTxRetry } from '@/hooks/toast/retryTx'
 import { shortenAddress } from '@/utils/token'
 import { ClmmLockInfo } from '@/hooks/portfolio/clmm/useClmmBalance'
@@ -338,11 +339,12 @@ export const useClmmStore = createStore<ClmmState>(
         };
       }
 
-      // try {
+      try {
         const cc = initComputerClient()
         const computeBudgetConfig = await getComputeBudgetConfig()
-        const nonce = await cc.getNonce(getUserMix())
-        const alts = await cc.getAtls();
+        const nonce = createPoolBuildData ? poolNonce : await cc.getNonce(getUserMix())
+        if (!nonce) throw new Error('missing create pool nonce')
+        const alts = createPoolBuildData ? [] : await cc.getAtls();
 
         const owner = new PublicKey(publicKey)
         const txBuilder = new TxBuilder({
@@ -351,15 +353,17 @@ export const useClmmStore = createStore<ClmmState>(
           feePayer: new PublicKey(info.payer),
           cluster: raydium.cluster
         });
-        const nonceIns = SystemProgram.nonceAdvance({
-          noncePubkey: new PublicKey(nonce.nonce_address),
-          authorizedPubkey: new PublicKey(info.payer)
-        })
-        txBuilder.addInstruction({
-          instructions: [nonceIns],
-          instructionTypes: ["AdvanceNonceAccount"],
-          lookupTableAddress: alts
-        })
+        if (!createPoolBuildData) {
+          const nonceIns = SystemProgram.nonceAdvance({
+            noncePubkey: new PublicKey(nonce.nonce_address),
+            authorizedPubkey: new PublicKey(info.payer)
+          })
+          txBuilder.addInstruction({
+            instructions: [nonceIns],
+            instructionTypes: ["AdvanceNonceAccount"],
+            lookupTableAddress: alts
+          })
+        }
 
         const params = {
           poolInfo,
@@ -465,7 +469,7 @@ export const useClmmStore = createStore<ClmmState>(
           lookupTableAddress: alts
         });
         
-        if (computeBudgetConfig) {
+        if (!createPoolBuildData && computeBudgetConfig) {
           const ins = addComputeBudget(computeBudgetConfig);
           txBuilder.addInstruction(ins);
         }
@@ -498,57 +502,50 @@ export const useClmmStore = createStore<ClmmState>(
         const invoice = newMixinInvoice(computer);
         if (!invoice) throw new Error('computer connection failed');
         
-        // create pool and open position
+        let transaction: Buffer
+        let rentSizes = OPEN_POSITION_RENT_SIZES
         if (createPoolBuildData) {
-          const total1 = CREATE_POOL_RENT_SIZES.reduce((prev, cur) => {
-            const total = prev + rentMap[cur]
-            return total
-          }, 0)
-          const fee = await cc.getFeeOnXin(formatUnits(total1, SOL_DECIMAL).toString())
-
-          const { transactions } = await createPoolBuildData.builder.sizeCheckBuildV0();
-          if (transactions.length !== 1 || !poolNonce) throw new Error('invalid create pool transaction');
-          transactions[0].message.recentBlockhash = poolNonce.nonce_hash;
-          const tx1 = Buffer.from(transactions[0].serialize());
-
-          const trace = uniqueConversationID(tx1.toString('hex'), "system call");
-          const extra1 = buildComputerExtra(
-            info.members.app_id, 
-            OperationTypeSystemCall, 
-            buildSystemCallInvoiceExtra(account.id, trace, true, fee.fee_id)
-          )
-          attachStorageEntry(invoice, uniqueConversationID(trace, "storage"), tx1)
-          attachInvoiceEntry(invoice, {
-            trace_id: trace,
-            asset_id: XIN_ASSET_ID,
-            amount: add(info.params.operation.price, fee.xin_amount).toFixed(8, BigNumber.ROUND_CEIL),
-            extra: Buffer.from(extra1),
-            index_references: [0],
-            hash_references: []
+          const createPoolTxData = createPoolBuildData.builder.AllTxData
+          const openPositionTxData = buildData.builder.AllTxData
+          transaction = await buildSimulatedV1Transaction({
+            // The referenced Invoice deposits are prepared on Solana before
+            // Computer executes this System Call, but are absent in this simulation.
+            allowDeferredFunding: true,
+            connection: raydium.connection,
+            feePayer: new PublicKey(info.payer),
+            recentBlockhash: nonce.nonce_hash,
+            instructions: [
+              ...createPoolTxData.instructions,
+              ...openPositionTxData.instructions,
+              ...openPositionTxData.endInstructions,
+              ...createPoolTxData.endInstructions
+            ],
+            signers: [...createPoolTxData.signers, ...openPositionTxData.signers],
+            priorityMicroLamports: computeBudgetConfig?.microLamports
           })
+          rentSizes = [...CREATE_POOL_RENT_SIZES, ...OPEN_POSITION_RENT_SIZES]
+        } else {
+          const { transactions } = await buildData.builder.sizeCheckBuildV0();
+          if (transactions.length !== 1) throw new Error('invalid open position transaction');
+          transactions[0].message.recentBlockhash = nonce.nonce_hash;
+          transactions[0].sign(insInfo.signers);
+          transaction = Buffer.from(transactions[0].serialize());
         }
 
-        const { transactions: txs } = await buildData.builder.sizeCheckBuildV0();
-        if (txs.length !== 1) throw new Error('invalid open position transaction');
-        txs[0].message.recentBlockhash = nonce.nonce_hash;
-        txs[0].sign(insInfo.signers);
-        const tx2 = Buffer.from(txs[0].serialize());
-
-        const total2 = OPEN_POSITION_RENT_SIZES.reduce((prev, cur) => {
+        const totalRent = rentSizes.reduce((prev, cur) => {
           const total = prev + rentMap[cur]
           return total
         }, 0)
-        const fee = await cc.getFeeOnXin(formatUnits(total2, SOL_DECIMAL).toString())
+        const fee = await cc.getFeeOnXin(formatUnits(totalRent, SOL_DECIMAL).toString())
 
-        const refs = invoice.entries.length > 0 ? [invoice.entries.length - 1] : [];
-        const trace2 = uniqueConversationID(tx2.toString('hex'), "system call");
-        const extra2 = buildComputerExtra(
+        const trace = uniqueConversationID(transaction.toString('hex'), "system call");
+        const extra = buildComputerExtra(
           info.members.app_id, 
           OperationTypeSystemCall, 
-          buildSystemCallInvoiceExtra(account.id, trace2, false, fee.fee_id)
+          buildSystemCallInvoiceExtra(account.id, trace, false, fee.fee_id)
         )
-        refs.push(invoice.entries.length)
-        attachStorageEntry(invoice, uniqueConversationID(trace2, "storage"), tx2)
+        const refs = [invoice.entries.length]
+        attachStorageEntry(invoice, uniqueConversationID(trace, "storage"), transaction)
 
         const amount1 = base === 'MintA' 
           ? formatUnits(baseAmount, poolInfo.mintA.decimals).toString() 
@@ -559,7 +556,7 @@ export const useClmmStore = createStore<ClmmState>(
         if (!eq(amount1, 0)) {
           refs.push(invoice.entries.length)
           attachInvoiceEntry(invoice, {
-            trace_id: uniqueConversationID(trace2, token1.asset_id),
+            trace_id: uniqueConversationID(trace, token1.asset_id),
             asset_id: token1.asset_id,
             amount: amount1,
             extra: referenceExtra,
@@ -570,7 +567,7 @@ export const useClmmStore = createStore<ClmmState>(
         if (!eq(amount2, 0)) {
           refs.push(invoice.entries.length)
           attachInvoiceEntry(invoice, {
-            trace_id: uniqueConversationID(trace2, token2.asset_id),
+            trace_id: uniqueConversationID(trace, token2.asset_id),
             asset_id: token2.asset_id,
             amount: amount2,
             extra: referenceExtra,
@@ -579,30 +576,34 @@ export const useClmmStore = createStore<ClmmState>(
           })
         }
         attachInvoiceEntry(invoice, {
-            trace_id: trace2,
-            asset_id: XIN_ASSET_ID,
-            amount: add(info.params.operation.price, fee.xin_amount).toFixed(8, BigNumber.ROUND_CEIL),
-            extra: Buffer.from(extra2),
-            index_references: refs,
-            hash_references: []
+          trace_id: trace,
+          asset_id: XIN_ASSET_ID,
+          amount: add(info.params.operation.price, fee.xin_amount).toFixed(8, BigNumber.ROUND_CEIL),
+          extra: Buffer.from(extra),
+          index_references: refs,
+          hash_references: []
         })
         
         const url = handleInvoiceSchema(getInvoiceString(invoice));
         console.log(invoice, url)
         const scheme = await client.code.schemes(url)
         reqs.push({
-          trace: trace2,
+          trace,
           value: `https://mixin.one/schemes/${scheme.scheme_id}`,
         })
         return {
           requests: reqs,
           buildData
         };
-      // } catch (e: any) {
-      //   txProps.onError?.()
-      //   txProps.onFinally?.()
-      //   console.error(e)
-      // }
+      } catch (e: any) {
+        txProps.onError?.()
+        txProps.onFinally?.()
+        toastSubject.next({ txError: e })
+        return {
+          requests: [],
+          buildData: undefined
+        }
+      }
     },
 
     removeLiquidityAct: async ({
