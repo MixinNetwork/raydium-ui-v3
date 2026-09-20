@@ -1,5 +1,5 @@
-import { PublicKey, VersionedTransaction,  TransactionMessage, SystemProgram, AddressLookupTableAccount } from '@solana/web3.js'
-import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, addComputeBudget, TxVersion, WSOLMint, SOLMint, closeAccountInstruction, swapBaseOutAutoAccount } from '@raydium-io/raydium-sdk-v2'
+import { PublicKey, SystemProgram } from '@solana/web3.js'
+import { SOL_INFO, PoolKeys, getATAAddress, swapBaseInAutoAccount, ALL_PROGRAM_ID, TxVersion, WSOLMint, SOLMint, closeAccountInstruction, swapBaseOutAutoAccount } from '@raydium-io/raydium-sdk-v2'
 import BN from 'bn.js'
 import BigNumber from 'bignumber.js';
 import { createStore, useAppStore, useTokenAccountStore, useTokenStore } from '@/store'
@@ -13,7 +13,7 @@ import i18n from '@/i18n'
 import { fetchComputePrice } from '@/utils/tx/computeBudget'
 import { trimTailingZero } from '@/utils/numberish/formatter'
 import { initComputerClient } from '@/api/computer'
-import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, uniqueConversationID, checkSystemCallSize, OperationTypeUserDeposit, userIdToBytes } from '@mixin.dev/mixin-node-sdk'
+import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, uniqueConversationID, OperationTypeUserDeposit, userIdToBytes } from '@mixin.dev/mixin-node-sdk'
 import { buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema } from '@/utils/mixin'
 import { OperationTypeSystemCall, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { ComputerFeeResponse, ComputerSystemCallRequest } from '@/types/computer'
@@ -21,6 +21,7 @@ import { add } from '@/utils/number'
 import { getDefaultToastData, handleMultiTxToast, transformProcessData } from '@/hooks/toast/multiToastUtil';
 import { handleMultiTxRetry } from '@/hooks/toast/retryTx';
 import { routeWrapSOLInstuction } from '@/utils/insturction';
+import { buildSimulatedV1Transaction } from '@/utils/tx/v1'
 
 const getSwapComputePrice = async () => {
   const transactionFee = useAppStore.getState().getPriorityFee()
@@ -89,7 +90,6 @@ export const useSwapStore = createStore<SwapStore>(
         const [inputToken, outputToken] = [getToken(swapResponse.data.inputMint)!, getToken(swapResponse.data.outputMint)!]
 
         const computeData = await getSwapComputePrice()
-        const computeIns = computeData ? addComputeBudget(computeData).instructions : []
 
         const poolsResp = await axios.get<PoolKeys[]>(
           urlConfigs.BASE_HOST + urlConfigs.POOL_KEY_BY_ID + `?ids=${swapResponse.data.routePlan.map((r) => r.poolId).join(',')}`
@@ -142,16 +142,6 @@ export const useSwapStore = createStore<SwapStore>(
           ? add(info.params.operation.price, fee.xin_amount).toFixed(8, BigNumber.ROUND_CEIL)
           : info.params.operation.price;
 
-        // const swapTransactions = data || []
-        // if (swapTransactions.length !== 1) throw new Error('invalid swap transaction'); //
-        // const buf = Buffer.from(swapTransactions[0].transaction, 'base64')
-        // let tx = VersionedTransaction.deserialize(buf as any);
-        // const res = await Promise.all(tx.message.addressTableLookups.map(a => connection.getAddressLookupTable(a.accountKey)))
-        // const alts = res.filter(r => r.value).map(r => r.value) as AddressLookupTableAccount[]
-        // const swapIxs = TransactionMessage.decompile(tx.message, {
-        //   addressLookupTableAccounts: alts
-        // }).instructions;
-
         const nonce = await cc.getNonce(getUserMix())
         const nonceIns = SystemProgram.nonceAdvance({
           noncePubkey: new PublicKey(nonce.nonce_address),
@@ -170,21 +160,17 @@ export const useSwapStore = createStore<SwapStore>(
             owner: publicKey,
           }))
         }
-        instructions.push(...computeIns)
-        
-        const alts = await cc.getAtls();
-        const rpcAccounts = await Promise.all(alts.map(a => connection.getAddressLookupTable(new PublicKey(a))));
-        const altsAccounts = rpcAccounts.map(a => a.value).filter(a => a != null) as AddressLookupTableAccount[];
-        const messageV0 = new TransactionMessage({
-          payerKey: new PublicKey(info.payer),
+
+        // Computer deposits the swap input assets only after this invoice is paid.
+        const txBuf = await buildSimulatedV1Transaction({
+          allowDeferredFunding: true,
+          connection,
+          feePayer: new PublicKey(info.payer),
           recentBlockhash: nonce.nonce_hash,
           instructions,
-        }).compileToV0Message(altsAccounts);
-        const tx = new VersionedTransaction(messageV0);
-        
-        const txBuf = Buffer.from(tx.serialize());
-        const valid = checkSystemCallSize(txBuf);
-        if (!valid) throw new Error('Transaction too large');
+          signers: [],
+          priorityMicroLamports: computeData?.microLamports
+        })
 
         const trace = uniqueConversationID(txBuf.toString("hex"), "system call");
         const extra = buildComputerExtra(
@@ -227,12 +213,14 @@ export const useSwapStore = createStore<SwapStore>(
       } catch (e: any) {
         console.error(e)
         txProps.onError?.()
-        if (e.message !== 'tx failed') {
-          const err =  typeof e === 'string' 
-            ? new Error(e)
-            : e.message.includes('Transaction too large') 
-              ? new Error('Transaction too large, cannot swap directly')
-              : e.message;
+        const message = e instanceof Error ? e.message : String(e)
+        if (message !== 'tx failed') {
+          const isTooLarge = message.includes('Transaction too large') || message.includes('v1 transaction is') || message.includes('v1 transaction has')
+          const err = isTooLarge
+            ? new Error(`${message}. The selected route cannot be sent in one transaction`)
+            : e instanceof Error
+              ? e
+              : new Error(message)
           toastSubject.next({ txError: err, title: 'Swap', description: 'Send transaction failed', duration: null })
         } 
       } finally {

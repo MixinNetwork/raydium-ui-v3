@@ -26,6 +26,7 @@ const RESOURCE_MARGIN_NUMERATOR = 110
 const RESOURCE_MARGIN_DENOMINATOR = 100
 
 interface BuildV1TransactionParams {
+  /** Computer deposits invoice-funded assets only after the transaction is built. */
   allowDeferredFunding?: boolean
   connection: Connection
   feePayer: PublicKey
@@ -45,10 +46,6 @@ interface SimulationResult {
 interface SimulationRpcResponse {
   error?: { code: number; message: string }
   result?: { value: SimulationResult }
-}
-
-interface InstructionErrorResult {
-  InstructionError?: [number, string | { Custom?: number }]
 }
 
 function withResourceMargin(value: number, maximum: number): number {
@@ -138,18 +135,13 @@ async function simulateV1Transaction(connection: Connection, wire: Buffer): Prom
   const body = (await response.json()) as SimulationRpcResponse
   if (body.error) throw new Error(`simulate v1 transaction failed: ${body.error.message}`)
   if (!body.result) throw new Error('simulate v1 transaction failed: empty RPC result')
+  if (body.result.value.err) {
+    const logs = body.result.value.logs?.join('\n')
+    throw new Error(
+      `simulate v1 transaction failed: ${JSON.stringify(body.result.value.err)}${logs ? `\n${logs}` : ''}`
+    )
+  }
   return body.result.value
-}
-
-function isDeferredFundingError(simulation: SimulationResult): boolean {
-  const instructionError = (simulation.err as InstructionErrorResult | null)?.InstructionError
-  const customError = typeof instructionError?.[1] === 'object' ? instructionError[1].Custom : undefined
-  return customError === 1 && simulation.logs?.some((log) => log.includes('Error: insufficient funds')) === true
-}
-
-function simulationError(simulation: SimulationResult): Error {
-  const logs = simulation.logs?.join('\n')
-  return new Error(`simulate v1 transaction failed: ${JSON.stringify(simulation.err)}${logs ? `\n${logs}` : ''}`)
 }
 
 /**
@@ -157,8 +149,8 @@ function simulationError(simulation: SimulationResult): Error {
  * instructions are removed because v1 commits resource limits in its config.
  * The provisional maximums are used for simulation. The final message stores
  * the observed values with a 10% margin. Transactions funded by a Computer
- * Invoice keep the maximums when simulation reaches the expected pre-deposit
- * insufficient-funds error.
+ * Invoice cannot be simulated before its prepare transaction deposits the
+ * assets, so allowDeferredFunding keeps the provisional maximums.
  */
 export async function buildSimulatedV1Transaction(params: BuildV1TransactionParams): Promise<Buffer> {
   const instructions = params.instructions.filter((instruction) => !instruction.programId.equals(ComputeBudgetProgram.programId))
@@ -172,10 +164,7 @@ export async function buildSimulatedV1Transaction(params: BuildV1TransactionPara
     loadedAccountsDataSizeLimit: MAX_LOADED_ACCOUNTS_DATA_SIZE_LIMIT,
     priorityFeeLamports: BigInt(0)
   }
-  const provisionalWire = await serializeV1Transaction({ ...params, instructions, config: provisionalConfig })
-  const simulation = await simulateV1Transaction(params.connection, provisionalWire)
-  if (simulation.err) {
-    if (!params.allowDeferredFunding || !isDeferredFundingError(simulation)) throw simulationError(simulation)
+  if (params.allowDeferredFunding) {
     return serializeV1Transaction({
       ...params,
       instructions,
@@ -185,6 +174,9 @@ export async function buildSimulatedV1Transaction(params: BuildV1TransactionPara
       }
     })
   }
+
+  const provisionalWire = await serializeV1Transaction({ ...params, instructions, config: provisionalConfig })
+  const simulation = await simulateV1Transaction(params.connection, provisionalWire)
   if (!simulation.unitsConsumed) throw new Error('simulate v1 transaction failed: unitsConsumed is missing or zero')
   if (!simulation.loadedAccountsDataSize) {
     throw new Error('simulate v1 transaction failed: loadedAccountsDataSize is missing or zero')
