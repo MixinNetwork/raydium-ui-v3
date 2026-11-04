@@ -1,0 +1,33 @@
+# Yarn 1 never installed missing peer dependencies; keep the same tree.
+autoInstallPeers: false
+
+# Sentry's build plugin calls the sentry-cli binary that this script downloads.
+onlyBuiltDependencies:
+  - '@sentry/cli'
+
+overrides:
+  '@solana/spl-token': '^0.4.8'
+  '@solana/wallet-adapter-base': '^0.9.23'
+  '@solana/web3.js': '^1.95.3'
+  '@solana/buffer-layout': '^4.0.1'
+  'decimal.js': '^10.4.3'
+  'bn.js': '^5.2.1'
+  'elliptic': '6.6.1'
+  'form-data': '4.0.6'
+  'lodash': '4.18.1'
+  'source-map-js': '1.2.2'
+  'follow-redirects': '1.16.2'
+  '@trezor/protobuf>protobufjs': '7.6.6'
+  '@web3modal/scaffold-utils>@coinbase/wallet-sdk': '4.3.6'
+  '@mixin.dev/mixin-node-sdk>axios': '1.20.0'
+  '@mixin.dev/mixin-node-sdk>serialize-javascript': '7.1.4'
+  'tronweb>axios': '1.20.0'
+  '@aptos-labs/aptos-client>axios': '1.20.0'
+  'viem>ws': '8.21.3'
+  'ethers>ws': '8.21.3'
+  '@ethersproject/providers>ws': '8.21.3'
+  'next>postcss': '8.5.28'
+  '@sentry/nextjs>rollup': '3.30.0'
+  'eccrypto>secp256k1': '3.8.1'
+  '@next/eslint-plugin-next>glob': '10.5.0'
+  'porto>zod': '4.6.7'
