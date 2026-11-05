@@ -14,8 +14,7 @@ interface MixinModalProps {
 
 export function MixinMultipleTracesModal(props: MixinModalProps) {
   const { t } = useTranslation()
-  const { getMixinClient } = useAppStore.getState()
-  const client = getMixinClient();
+  const keystore = useAppStore((s) => s.keystore)
   console.log(props.requests)
   
   const [index, setIndex] = useState(0);
@@ -29,11 +28,18 @@ export function MixinMultipleTracesModal(props: MixinModalProps) {
     else return `${n}-th`;
   };
   useEffect(() => {
+    if (!props.isOpen || !keystore || !props.requests[index]) return;
     setOrdinal(getOrdinal(index+1))
     const timer = setInterval(async () => {
-      const trace = props.requests[index].trace;
+      if (useAppStore.getState().keystore !== keystore) {
+        clearInterval(timer);
+        return;
+      }
       try {
+        const client = useAppStore.getState().getMixinClient();
+        const trace = props.requests[index].trace;
         const tx = await client.utxo.fetchTransaction(trace);
+        if (useAppStore.getState().keystore !== keystore) return;
         if (tx.state !== 'spent') return;
         if (index === props.requests.length - 1) {
           clearInterval(timer);
@@ -48,7 +54,7 @@ export function MixinMultipleTracesModal(props: MixinModalProps) {
       } catch(e) {}
     }, 1000 * 5);
     return () => clearInterval(timer);
-  }, [index])
+  }, [index, props.isOpen, keystore, props.requests])
 
   
   return (

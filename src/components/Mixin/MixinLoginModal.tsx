@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next';
-import { AuthorizationResponse, base64RawURLEncode, getChallenge, getED25519KeyPair } from '@mixin.dev/mixin-node-sdk';
+import { AuthorizationResponse, base64RawURLEncode, getChallenge, getED25519KeyPair, OAuthClient } from '@mixin.dev/mixin-node-sdk';
 import ReconnectingWebSocket from 'reconnecting-websocket';
 import pako from 'pako';
 import { v4 } from 'uuid';
@@ -11,9 +11,8 @@ import { checkMessenger } from '@/utils/mixin';
 
 export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }) {
   const { t } = useTranslation()
-  const {user, getMixinClient, setKeystore, getMe} = useAppStore((s) => ({
+  const {user, setKeystore, getMe} = useAppStore((s) => ({
     user: s.user,
-    getMixinClient: s.getMixinClient,
     setKeystore: s.setKeystore,
     getMe: s.getMe,
   }));
@@ -121,8 +120,11 @@ export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }
     const { seed, publicKey } = getED25519KeyPair();
 
     try {
-      let client = getMixinClient();
-      const { scope, authorization_id } = await client.oauth.getToken({
+      const client = OAuthClient({
+        keystore: { app_id: clientId, session_private_key: seed.toString('hex') },
+        requestConfig: { timeout: 1000 * 60, retry: 0 },
+      });
+      const { scope, authorization_id } = await client.getToken({
         client_id: clientId,
         code,
         ed25519: base64RawURLEncode(publicKey),
@@ -138,7 +140,7 @@ export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }
         return;
       }
 
-      client = setKeystore({
+      setKeystore({
         app_id: clientId,
         scope,
         authorization_id,
