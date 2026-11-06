@@ -27,7 +27,7 @@ import { retry, isProdEnv } from '@/utils/common'
 import { compare } from 'compare-versions'
 import { ComputerAssetResponse, ComputerInfoResponse, ComputerUserResponse, UserAssetBalance, UserAssetBalanceWithoutAsset } from '@/types/computer';
 import { add } from '@/utils/number';
-import { SOL_ASSET_ID, USER_AGENT } from '@/utils/constant';
+import { SOL_ASSET_ID } from '@/utils/constant';
 
 export const defaultNetWork = WalletAdapterNetwork.Mainnet // Can be set to 'devnet', 'testnet', or 'mainnet-beta'
 export const defaultEndpoint = clusterApiUrl(defaultNetWork) // You can also provide a custom RPC endpoint
@@ -215,7 +215,6 @@ let epochInfoCache = {
 }
 
 const defaultHttpConfig: RequestConfig = {
-  userAgent: USER_AGENT,
   timeout: 1000 * 60
 }
 
