@@ -5,7 +5,7 @@ import axios from 'axios'
 
 const axiosInstance = axios.create({ timeout: 5 * 60 * 1000 })
 export const retryCount = 5
-export const skipRetryStatus = new Set([400, 403, 404, 500])
+export const skipRetryStatus = new Set([400, 401, 403, 404, 500])
 const logCount = 800
 
 const isSkipLogs = (url?: string) => url?.includes('birdeye')

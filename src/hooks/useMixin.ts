@@ -13,10 +13,9 @@ export default function useMixin() {
 
   useEffect(() => {
     if (!user) return;
-    updateBalances(computerAssets);
-    const id = window.setInterval(() => {
-      updateBalances(computerAssets);
-    }, 60 * 1000)
+    const refresh = () => { void updateBalances(computerAssets).catch(() => {}) }
+    refresh();
+    const id = window.setInterval(refresh, 60 * 1000)
     return () => window.clearInterval(id)
   }, [user, computerAssets])
 }

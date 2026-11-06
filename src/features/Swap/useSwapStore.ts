@@ -13,7 +13,7 @@ import i18n from '@/i18n'
 import { fetchComputePrice } from '@/utils/tx/computeBudget'
 import { trimTailingZero } from '@/utils/numberish/formatter'
 import { initComputerClient } from '@/api/computer'
-import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, uniqueConversationID, checkSystemCallSize, OperationTypeUserDeposit, userIdToBytes } from '@mixin.dev/mixin-node-sdk'
+import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, newMixinInvoice, uniqueConversationID, checkSystemCallSize, OperationTypeUserDeposit, userIdToBytes } from '@mixin.dev/mixin-node-sdk'
 import { buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema } from '@/utils/mixin'
 import { OperationTypeSystemCall, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { ComputerFeeResponse, ComputerSystemCallRequest } from '@/types/computer'
@@ -50,12 +50,6 @@ interface SwapStore {
   unWrapSolAct: (props: { amount: string; onClose?: () => void; onSent?: () => void; onError?: () => void }) => Promise<string | undefined>
   wrapSolAct: (amount: string) => Promise<string | undefined>
 }
-
-const client = MixinApi({ 
-  requestConfig: {
-    timeout: 1000 * 60,
-  }
-});
 
 export interface ComputeParams {
   inputMint: string
@@ -218,7 +212,7 @@ export const useSwapStore = createStore<SwapStore>(
         })
         const url = handleInvoiceSchema(getInvoiceString(invoice));
         console.log(invoice, url)
-        const scheme = await client.code.schemes(url)
+        const scheme = await useAppStore.getState().getMixinClient().code.schemes(url)
         const req = {
           trace: trace,
           value: `https://mixin.one/schemes/${scheme.scheme_id}`,

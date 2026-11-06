@@ -156,7 +156,10 @@ const loadKeystore = () => {
   try {
     const value = localStorage.getItem('keystore');
     if (!value) return undefined
-    return JSON.parse(value) as Keystore;
+    const keystore = JSON.parse(value) as Keystore;
+    if (!keystore?.app_id || !keystore.session_private_key) return undefined;
+    if (!('authorization_id' in keystore && keystore.authorization_id) && !('session_id' in keystore && keystore.session_id)) return undefined;
+    return keystore;
   } catch {
     return undefined
   }
@@ -264,7 +267,7 @@ export const useAppStore = createStore<AppState>(
     setKeystore: (keystore: Keystore) => {
       saveKeystore(keystore);
       set({ keystore })
-      return MixinApi({ keystore, requestConfig: defaultHttpConfig });
+      return get().getMixinClient();
     },
     logout: () => {
       clearKeystore();
@@ -280,14 +283,28 @@ export const useAppStore = createStore<AppState>(
     },
     getMixinClient: () => {
       const { keystore } = get();
-      return MixinApi({ keystore, requestConfig: defaultHttpConfig });
+      if (!keystore) throw new Error('Mixin login required');
+      return MixinApi({
+        keystore,
+        requestConfig: {
+          ...defaultHttpConfig,
+          errorMap: (error) => {
+            if (error?.response?.status === 401 || error?.status === 401 || error?.code === 401) {
+              if (get().keystore === keystore) get().logout();
+              // A numeric SDK error code can be mistaken for a retryable network error.
+              throw Object.assign(new Error('Mixin authorization expired'), { status: 401, cause: error });
+            }
+          }
+        }
+      });
     },
     getMe: async () => {
       const { keystore } = get();
       if (!keystore) return;
-      const mc = MixinApi({ keystore, requestConfig: defaultHttpConfig });
+      const mc = get().getMixinClient();
       try {
         const user = await mc.user.profile();
+        if (get().keystore !== keystore) return;
         const mix = buildMixAddress({
           version: 2,
           xinMembers: [],
@@ -295,6 +312,7 @@ export const useAppStore = createStore<AppState>(
           threshold: 1
         })
         const account = await client.fetchUser(mix);
+        if (get().keystore !== keystore) return;
         if (account) 
           set({ user, account, connected: true, publicKey: new PublicKey(account.chain_address) });
         else
@@ -312,8 +330,8 @@ export const useAppStore = createStore<AppState>(
       })
     },
     updateBalances: async (as: ComputerAssetResponse[]) => {
-      const { user, getMixinClient } = get();
-      if (!user) return;
+      const { user, keystore, getMixinClient } = get();
+      if (!user || !keystore) return;
       const client = getMixinClient();
       const webview = WebViewApi();
       const platform = webview.getMixinContext().platform ?? '';
@@ -323,6 +341,7 @@ export const useAppStore = createStore<AppState>(
         case 'iOS': {
           const cb = async (assets: WebviewAsset[]) => {
             try {
+              if (get().keystore !== keystore) return;
               const bm = {} as Record<string, UserAssetBalanceWithoutAsset>;
               assets.forEach(a => {
                 const address = as.find(da => da.asset_id === a.asset_id)?.address;
@@ -333,6 +352,7 @@ export const useAppStore = createStore<AppState>(
                 }
               })
               const [fbm, am] = await processUserBalance(client, bm, as)
+              if (get().keystore !== keystore) return;
               set({ balances: fbm, balanceAddressMap: am })
             } catch (e) {}
           }
@@ -344,6 +364,7 @@ export const useAppStore = createStore<AppState>(
           let offset = 0
           let total: SafeUtxoOutput[] = []
           while(true) {
+            if (get().keystore !== keystore) return;
             const outputs = await client.utxo.safeOutputs({
               limit: 500,
               members,
@@ -372,7 +393,9 @@ export const useAppStore = createStore<AppState>(
             }
             return prev
           }, {} as Record<string, UserAssetBalanceWithoutAsset>)
+          if (get().keystore !== keystore) return;
           const [fbm, am] = await processUserBalance(client, bm, as)
+          if (get().keystore !== keystore) return;
           set({ balances: fbm, balanceAddressMap: am })
         }
       }
@@ -382,10 +405,11 @@ export const useAppStore = createStore<AppState>(
       if (info) set({ info });
     },
     getComputerAccount: async () => {
-      const { user, getUserMix } = get();
-      if (!user) return;
+      const { user, keystore, getUserMix } = get();
+      if (!user || !keystore) return;
       try {
         const account = await client.fetchUser(getUserMix());
+        if (get().keystore !== keystore) return;
         if (account) set({ account, connected: true, publicKey: new PublicKey(account.chain_address) });
       } catch {}
     },

@@ -49,7 +49,7 @@ import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import { ComputerNonceResponse, ComputerSystemCallRequest, Token } from '@/types/computer'
 import { buildComputerExtra, buildSystemCallInvoiceExtra, handleInvoiceSchema, buildAssetId } from '@/utils/mixin'
-import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, MixinApi, newMixinInvoice, OperationTypeUserDeposit, uniqueConversationID, userIdToBytes } from '@mixin.dev/mixin-node-sdk'
+import { attachInvoiceEntry, attachStorageEntry, formatUnits, getInvoiceString, newMixinInvoice, OperationTypeUserDeposit, uniqueConversationID, userIdToBytes } from '@mixin.dev/mixin-node-sdk'
 import { CREATE_POOL_RENT_SIZES, OPEN_POSITION_RENT_SIZES, OperationTypeSystemCall, SOL_DECIMAL, XIN_ASSET_ID } from '@/utils/constant'
 import { initComputerClient } from '@/api/computer'
 import { add, eq } from '@/utils/number'
@@ -221,12 +221,6 @@ const clmmInitState = {
   rewardWhiteListMints: [],
   slippage: 0.005
 }
-
-const client = MixinApi({ 
-  requestConfig: {
-    timeout: 1000 * 60,
-  }
-});
 
 export const useClmmStore = createStore<ClmmState>(
   (set, get) => ({
@@ -589,7 +583,7 @@ export const useClmmStore = createStore<ClmmState>(
         
         const url = handleInvoiceSchema(getInvoiceString(invoice));
         console.log(invoice, url)
-        const scheme = await client.code.schemes(url)
+        const scheme = await useAppStore.getState().getMixinClient().code.schemes(url)
         reqs.push({
           trace: trace2,
           value: `https://mixin.one/schemes/${scheme.scheme_id}`,
@@ -720,7 +714,7 @@ export const useClmmStore = createStore<ClmmState>(
         })
         const url = handleInvoiceSchema(getInvoiceString(invoice));
         console.log(invoice, url)
-        const scheme = await client.code.schemes(url)
+        const scheme = await useAppStore.getState().getMixinClient().code.schemes(url)
         const req1 = {
           trace: trace,
           value: `https://mixin.one/schemes/${scheme.scheme_id}`,
@@ -961,7 +955,7 @@ export const useClmmStore = createStore<ClmmState>(
 
         const url = handleInvoiceSchema(getInvoiceString(invoice));
         console.log(invoice, url)
-        const scheme = await client.code.schemes(url)
+        const scheme = await useAppStore.getState().getMixinClient().code.schemes(url)
         
         return [{
           trace: trace,
