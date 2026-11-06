@@ -8,6 +8,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { compare } from '@/utils/date';
 import { MixinModal } from './MixinModal';
 import { checkMessenger } from '@/utils/mixin';
+import { USER_AGENT } from '@/utils/constant';
 
 export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }) {
   const { t } = useTranslation()
@@ -122,7 +123,7 @@ export function MixinLoginModal(props: { isOpen: boolean; onClose: () => void; }
     try {
       const client = OAuthClient({
         keystore: { app_id: clientId, session_private_key: seed.toString('hex') },
-        requestConfig: { timeout: 1000 * 60, retry: 0 },
+        requestConfig: { timeout: 1000 * 60, retry: 0, userAgent: USER_AGENT },
       });
       const { scope, authorization_id } = await client.getToken({
         client_id: clientId,

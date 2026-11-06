@@ -1,4 +1,5 @@
 export const VERSION = 'prod' as 'staging' | 'prod';
+export const USER_AGENT = 'ocean one';
 
 export const isStaging = () => {
   return VERSION !== 'prod';
